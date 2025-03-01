@@ -25,10 +25,20 @@ class Jugador:
         self.velocidad = 5
         self.cuadrado = pygame.Rect(x, y, self.ancho, self.alto)
     
+    def mover(self, dx, dy):
+        self.x += dx * self.velocidad
+        self.y += dy * self.velocidad
+        self.cuadrado.x = self.x
+        self.cuadrado.y = self.y
+
     def dibujar(self, surface):
         pygame.draw.rect(surface, ROJO, self.cuadrado)
 
+# Crear al Jugador
 jugador = Jugador(ANCHO_PANTALLA //2, ALTO_PANTALLA // 2)
+
+# Reloj para controlar los FPS
+reloj = pygame.time.Clock()
 
 # Bucle principal 
 ejecutando = True
@@ -37,8 +47,24 @@ while ejecutando:
         if event.type == pygame.QUIT:
             ejecutando = False
     
+    # Teclas presionadas
+    teclas = pygame.key.get_pressed()
+
+    dx = teclas[pygame.K_RIGHT] - teclas[pygame.K_LEFT]
+    dy = teclas[pygame.K_DOWN] - teclas[pygame.K_UP]
+    jugador.mover(dx, dy)
+
+    pantalla.fill(NEGRO)
+
     #Dibujar al jugador
     jugador.dibujar(pantalla)
 
     #Actualizar la pantalla
     pygame.display.flip()
+
+    #Controlar la velcidad del juegp
+    reloj.tick(60)
+
+
+pygame.quit()
+sys.exit()
