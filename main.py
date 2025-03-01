@@ -28,6 +28,9 @@ class Jugador:
     def mover(self, dx, dy):
         self.x += dx * self.velocidad
         self.y += dy * self.velocidad
+        # Mantener al jugador dentro de los límites de la pantalla
+        self.x = max(0, min(self.x, ANCHO_PANTALLA - self.ancho))
+        self.y = max(0, min(self.x, ALTO_PANTALLA - self.alto))       
         self.cuadrado.x = self.x
         self.cuadrado.y = self.y
 
@@ -54,6 +57,7 @@ while ejecutando:
     dy = teclas[pygame.K_DOWN] - teclas[pygame.K_UP]
     jugador.mover(dx, dy)
 
+    #Limpiar la pantalla
     pantalla.fill(NEGRO)
 
     #Dibujar al jugador
