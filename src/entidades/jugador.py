@@ -8,13 +8,13 @@ class Jugador:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.ancho = 32
-        self.alto = 32
+        self.ancho = ANCHO_JUGADOR
+        self.alto = ALTO_JUGADOR
         self.velocidad = 5
         self.cuadrado = pygame.Rect(x, y, self.ancho, self.alto)
         self.balas = []
         self.tiempo_recarga = 0
-        self.retraso_disparo = 10 # 10 frames de delay
+        self.retraso_disparo = RETRASO_DISPARO_JUGADOR # Frames de delay
     
     def mover(self, dx, dy):
         self.x += dx * self.velocidad

@@ -6,9 +6,9 @@ class Bala:
     def __init__(self, x, y, direccion_x, direccion_y):
         self.x = x
         self.y = y        
-        self.ancho = 5
-        self.alto = 5
-        self.velocidad = 10
+        self.ancho = ANCHO_BALA
+        self.alto = ALTO_BALA
+        self.velocidad = VELOCIDAD_BALA
         self.direccion_x = direccion_x
         self.direccion_y = direccion_y
         self.forma = pygame.Rect(x, y, self.ancho, self.alto)

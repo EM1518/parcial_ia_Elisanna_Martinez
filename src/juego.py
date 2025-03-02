@@ -5,13 +5,13 @@ from src.entidades.jugador import Jugador
 class Juego:
     def __init__(self):
         pygame.init()
-        self.pantalla = pygame.display.set_mode((800, 600))
+        self.pantalla = pygame.display.set_mode((ANCHO_PANTALLA, ALTO_PANTALLA))
         pygame.display.set_caption("Berzerk")
         self.reloj = pygame.time.Clock()
         self.ejecutando = True
 
         #crear jugador
-        self.jugador = Jugador(400, 300)
+        self.jugador = Jugador(ANCHO_PANTALLA // 2, ALTO_PANTALLA // 2)
     
     def manejar_eventos(self):
         for evento in pygame.event.get():
