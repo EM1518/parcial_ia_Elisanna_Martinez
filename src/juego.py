@@ -3,6 +3,7 @@ import random
 from src.constantes import *
 from src.entidades.jugador import Jugador
 from src.entidades.robot import Robot
+from src.utilidades.colisiones import detectar_colision_entidades, detectar_colision_balas_entidad
 
 class Juego:
     def __init__(self):
@@ -11,6 +12,7 @@ class Juego:
         pygame.display.set_caption("Berzerk")
         self.reloj = pygame.time.Clock()
         self.ejecutando = True
+        self.jugando = True
 
         #crear jugador
         self.jugador = Jugador(ANCHO_PANTALLA // 2, ALTO_PANTALLA // 2)
@@ -26,12 +28,33 @@ class Juego:
             y = random.randint(0, ALTO_PANTALLA - ALTO_JUGADOR)
             self.robots.append(Robot(x, y))
 
+    def verificar_colisiones(self):
+        # Verificar colisiones entre balas del jugador y robots
+        for robot in self.robots[:]:  # Usamos [:] para poder modificar la lista durante la iteración
+            if detectar_colision_balas_entidad(self.jugador.balas, robot):
+                self.robots.remove(robot)  # Eliminar robot si es golpeado
+
+        # Verificar colisiones entre balas de robots y jugador
+        for robot in self.robots:
+            if detectar_colision_balas_entidad(robot.balas, self.jugador):
+                self.jugando = False  # El jugador pierde si es golpeado
+                return
+
+        # Verificar colisiones directas entre jugador y robots
+        for robot in self.robots:
+            if detectar_colision_entidades(self.jugador, robot):
+                self.jugando = False
+                return
+
     
     def manejar_eventos(self):
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 self.ejecutando = False
         
+        if not self.jugando:
+            return
+
         # Teclas presionadas
         teclas = pygame.key.get_pressed()
 
@@ -51,20 +74,41 @@ class Juego:
 
 
     def actualizar(self):
+        if not self.jugando:
+            return
+
         self.jugador.actualizar()
 
         # Actualizar robots
         for robot in self.robots:
             robot.actualizar(self.jugador.x, self.jugador.y)
 
+        # Verificar colisiones
+        self.verificar_colisiones()
+
+        # Verificar victoria
+        if len(self.robots) == 0:
+            print('Has ganado')
+            self.jugando  = False
+
+
     def dibujar(self):
         self.pantalla.fill((0, 0, 0))
-        self.jugador.dibujar(self.pantalla)
 
-        # Dibujar robots
-        for robot in self.robots:
-            robot.dibujar(self.pantalla)
-
+        if self.jugando:
+            self.jugador.dibujar(self.pantalla)
+            # Dibujar robots
+            for robot in self.robots:
+                robot.dibujar(self.pantalla)
+        else:
+            # Mostrar mensaje de fin de juego
+            fuente = pygame.font.Font(None, 74)
+            texto = "¡GAME OVER!"
+            if len(self.robots) == 0:
+                texto = "¡VICTORIA!"
+            superficie_texto = fuente.render(texto, True, BLANCO)
+            rect_texto = superficie_texto.get_rect(center=(ANCHO_PANTALLA/2, ALTO_PANTALLA/2))
+            self.pantalla.blit(superficie_texto, rect_texto)
         pygame.display.flip()
 
     def ejecutar(self):
