@@ -22,10 +22,17 @@ class Juego:
         self.crear_robot(3) #crear con 3 robots
 
     def crear_robot(self, cantidad):
-        for _ in range(cantidad):
-            #crear robots en posiciones aleatorias
-            x = random.randint(0, ANCHO_PANTALLA - ANCHO_JUGADOR)
-            y = random.randint(0, ALTO_PANTALLA - ALTO_JUGADOR)
+        #Área donde apareceran los robots
+        area_x = ANCHO_PANTALLA - 200
+        area_y = 100 
+
+        for i in range(cantidad):
+            #crear robots en formación
+            x = area_x + (i * 50)
+            y = area_y
+
+            # Asegurarse de que no se salgan de la pantalla
+            x = min(x, ANCHO_PANTALLA - ANCHO_JUGADOR)
             self.robots.append(Robot(x, y))
 
     def verificar_colisiones(self):
@@ -93,7 +100,7 @@ class Juego:
 
 
     def dibujar(self):
-        self.pantalla.fill((0, 0, 0))
+        self.pantalla.fill(NEGRO)
 
         if self.jugando:
             self.jugador.dibujar(self.pantalla)
