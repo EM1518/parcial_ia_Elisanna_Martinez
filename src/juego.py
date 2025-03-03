@@ -14,9 +14,10 @@ class Juego:
 
         #crear jugador
         self.jugador = Jugador(ANCHO_PANTALLA // 2, ALTO_PANTALLA // 2)
+       
         #crear robots
         self.robots = []
-        self.crear_robot(3) #crear 3 robots
+        self.crear_robot(3) #crear con 3 robots
 
     def crear_robot(self, cantidad):
         for _ in range(cantidad):
