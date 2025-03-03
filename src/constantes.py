@@ -8,6 +8,7 @@ NEGRO = (0, 0, 0)
 BLANCO = (255, 255, 255)
 ROJO = (255, 0, 0)
 AMARILLO = (255, 255, 0)
+VERDE = (0, 255, 0)
 
 #Configuración del jugador
 ANCHO_JUGADOR = 32
