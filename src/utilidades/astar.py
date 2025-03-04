@@ -29,3 +29,49 @@ class AEstrella:
             fila = [0] * self.columnas
             self.cuadricula.append(fila)
 
+
+    def obtener_vecinos(self, nodo):
+      # Obtiene los nodos vecinos válidos
+        vecinos = []
+        # 4 direcciones principales: arriba, derecha, abajo, izquierda
+        direcciones = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+        
+        for dx, dy in direcciones:
+            nuevo_x = nodo.x + dx
+            nuevo_y = nodo.y + dy
+
+            if (0 <= nuevo_x < self.columnas and 
+                0 <= nuevo_y < self.filas and 
+                self.cuadricula[nuevo_y][nuevo_x] == 0):
+                vecinos.append(Nodo(nuevo_x, nuevo_y))
+        return vecinos
+
+    def distancia_manhattan(self, nodo, objetivo):
+       # Calcula la distancia Manhattan entre dos nodos
+        return abs(nodo.x - objetivo.x) + abs(nodo.y - objetivo.y)
+
+    def encontrar_menor_f(self, lista_abierta):
+        # Encuentra el nodo con menor valor f en la lista abierta
+        menor_f = float('inf')
+        nodo_menor = None
+        indice_menor = 0
+        
+        for i, nodo in enumerate(lista_abierta):
+            if nodo.f < menor_f:
+                menor_f = nodo.f
+                nodo_menor = nodo
+                indice_menor = i
+                
+        if nodo_menor:
+            lista_abierta.pop(indice_menor)
+        return nodo_menor
+
+
+    def esta_en_lista(self, nodo, lista):
+        # Verifica si un nodo está en una lista
+        for n in lista:
+            if n == nodo:
+                return n
+        return None
+
+
