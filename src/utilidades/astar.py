@@ -74,4 +74,66 @@ class AEstrella:
                 return n
         return None
 
+    def encontrar_ruta(self, inicio_x, inicio_y, objetivo_x, objetivo_y):
+        """Encuentra una ruta usando el algoritmo A*"""
+        # Convertir coordenadas de píxeles a coordenadas de cuadrícula
+        inicio_x = inicio_x // self.tamano_celda
+        inicio_y = inicio_y // self.tamano_celda
+        objetivo_x = objetivo_x // self.tamano_celda
+        objetivo_y = objetivo_y // self.tamano_celda
 
+        # Crear nodos de inicio y objetivo
+        inicio = Nodo(inicio_x, inicio_y)
+        objetivo = Nodo(objetivo_x, objetivo_y)
+
+        # Inicializar nodo de inicio
+        inicio.g = 0
+        inicio.h = self.distancia_manhattan(inicio, objetivo)
+        inicio.f = inicio.g + inicio.h
+
+        # Lista abierta (nodos por explorar) y lista cerrada (nodos explorados)
+        lista_abierta = [inicio]
+        lista_cerrada = []
+        
+        while lista_abierta:
+            # Obtener el nodo con menor f
+            actual = self.encontrar_menor_f(lista_abierta)
+            if not actual:
+                break
+
+            # Si llegamos al objetivo
+            if actual == objetivo:
+                ruta = []
+                while actual:
+                    # Convertir de vuelta a coordenadas de píxeles
+                    ruta.append((
+                        actual.x * self.tamano_celda + self.tamano_celda // 2,
+                        actual.y * self.tamano_celda + self.tamano_celda // 2
+                    ))
+                    actual = actual.padre
+                return ruta[::-1]  # Invertir la ruta
+
+            lista_cerrada.append(actual)
+
+            # Explorar vecinos
+            for vecino in self.obtener_vecinos(actual):
+                # Ignorar si ya está en la lista cerrada
+                if self.esta_en_lista(vecino, lista_cerrada):
+                    continue
+
+                nuevo_g = actual.g + 1
+
+                # Buscar en lista abierta
+                nodo_existente = self.esta_en_lista(vecino, lista_abierta)
+                if not nodo_existente:
+                    vecino.g = nuevo_g
+                    vecino.h = self.distancia_manhattan(vecino, objetivo)
+                    vecino.f = vecino.g + vecino.h
+                    vecino.padre = actual
+                    lista_abierta.append(vecino)
+                elif nuevo_g < nodo_existente.g:
+                    nodo_existente.g = nuevo_g
+                    nodo_existente.f = nuevo_g + nodo_existente.h
+                    nodo_existente.padre = actual
+
+        return []  # No se encontró ruta
