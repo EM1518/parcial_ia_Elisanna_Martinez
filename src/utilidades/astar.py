@@ -137,3 +137,10 @@ class AEstrella:
                     nodo_existente.padre = actual
 
         return []  # No se encontró ruta
+
+    def actualizar_obstaculo(self, x, y, es_obstaculo):
+        """Actualiza la cuadrícula con un obstáculo"""
+        celda_x = x // self.tamano_celda
+        celda_y = y // self.tamano_celda
+        if 0 <= celda_x < self.columnas and 0 <= celda_y < self.filas:
+            self.cuadricula[celda_y][celda_x] = 1 if es_obstaculo else 0

@@ -2,6 +2,7 @@ import pygame
 import math
 from src.constantes import *
 from src.entidades.bala import Bala
+from src.utilidades.astar import AEstrella
 
 
 class Robot:
@@ -20,26 +21,47 @@ class Robot:
         self.puede_disparar = False
         self.velocidad_bala = 5 
 
+        # Variables para A*
+        self.navegador = AEstrella()
+        self.ruta_actual = []
+        self.tiempo_recalculo_ruta = 0
+        self.intervalo_recalculo = 60  # Recalcular ruta cada segundo
 
-    def mover_hacia_jugador(self, jugador_x, jugadot_y):
+    def mover_hacia_jugador(self, jugador_x, jugador_y):
 
-        # Calcular la dirección hacia el jugador
-        dx = jugador_x - self.x
-        dy = jugadot_y - self.y
+        # Recalcular ruta si es necesario
+        self.tiempo_recalculo_ruta -= 1
+        if self.tiempo_recalculo_ruta <= 0:
+            self.ruta_actual = self.navegador.encontrar_ruta(
+                int(self.x), int(self.y),
+                int(jugador_x), int(jugador_y)
+            )
+            self.tiempo_recalculo_ruta = self.intervalo_recalculo
 
-        # Normalizar la dirección
-        distancia = math.sqrt(dx * dx + dy * dy)
-        if distancia != 0:
-            dx /= distancia
-            dy /= distancia
+        # Si hay una ruta, seguirla
+        if self.ruta_actual:
+            siguiente_punto = self.ruta_actual[0]
+            # Calcular la dirección hacia el jugador
+            dx = siguiente_punto[0] - self.x
+            dy = siguiente_punto[1] - self.y
+            
+            # Normalizar la dirección
+            distancia = math.sqrt(dx * dx + dy * dy)
+            if distancia < self.velocidad:
+                self.ruta_actual.pop(0)
+            else: 
+                # Moverse hacia el punto
+                if distancia != 0:
+                    dx /= distancia
+                    dy /= distancia
 
-        # Mover el robot
-        self.x += dx * self.velocidad
-        self.y += dy * self.velocidad
+                # Mover el robot
+                self.x += dx * self.velocidad
+                self.y += dy * self.velocidad
 
-        #Actualizar el cuadrado
-        self.cuadrado.x = self.x
-        self.cuadrado.y = self.y
+                #Actualizar el cuadrado
+                self.cuadrado.x = self.x
+                self.cuadrado.y = self.y
 
     def disparar_a_jugador(self, jugador_x, jugador_y):
         if not self.puede_disparar:
@@ -91,6 +113,13 @@ class Robot:
 
 
     def dibujar(self, surface):
+        # Dibujar la ruta (para depuración)
+        if self.ruta_actual:
+            for i in range(len(self.ruta_actual) - 1):
+                pygame.draw.line(surface, (255, 0, 0), 
+                               self.ruta_actual[i], 
+                               self.ruta_actual[i + 1], 1)
+
         pygame.draw.rect(surface, self.color, self.cuadrado)
         # Dibujar balas
         for bala in self.balas:
