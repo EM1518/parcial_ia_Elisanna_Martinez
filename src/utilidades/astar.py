@@ -1,6 +1,67 @@
 import pygame
 from src.constantes import *
 
+class ListaPrioridad:
+    """Implementación de una cola de prioridad"""
+    def __init__(self):
+        self.lista = []
+
+    def push(self, item):
+        """Agrega un elemento y mantiene la propiedad de montículo"""
+        self.lista.append(item)
+        self._sift_up(len(self.lista) - 1)
+
+    def pop(self):
+        """Elimina y retorna el elemento con menor valor f"""
+        if not self.lista:
+            return None
+        if len(self.lista) == 1:
+            return self.lista.pop()
+
+        resultado = self.lista[0]
+        self.lista[0] = self.lista.pop()
+        if self.lista:
+            self._sift_down(0)
+        return resultado
+
+    def _sift_up(self, pos):
+        """Mueve un elemento hacia arriba en el montículo"""
+        item = self.lista[pos]
+        while pos > 0:
+            padre_pos = (pos - 1) >> 1
+            padre = self.lista[padre_pos]
+            if item.f >= padre.f:
+                break
+            self.lista[pos] = padre
+            pos = padre_pos
+        self.lista[pos] = item
+
+
+    def _sift_down(self, pos):
+        """Mueve un elemento hacia abajo en el montículo"""
+        item = self.lista[pos]
+        n = len(self.lista)
+        
+        while True:
+            hijo_izq = (pos << 1) + 1
+            if hijo_izq >= n:
+                break
+            hijo_menor = hijo_izq
+            hijo_der = hijo_izq + 1
+            
+            if hijo_der < n and self.lista[hijo_der].f < self.lista[hijo_izq].f:
+                hijo_menor = hijo_der
+            
+            if item.f <= self.lista[hijo_menor].f:
+                break
+            
+            self.lista[pos] = self.lista[hijo_menor]
+            pos = hijo_menor
+        self.lista[pos] = item
+        
+    def esta_vacia(self):
+        return len(self.lista) == 0
+
 class Nodo:
     def __init__(self, x, y):
         self.x = x
@@ -50,27 +111,13 @@ class AEstrella:
        # Calcula la distancia Manhattan entre dos nodos
         return abs(nodo.x - objetivo.x) + abs(nodo.y - objetivo.y)
 
-    def encontrar_menor_f(self, lista_abierta):
-        # Encuentra el nodo con menor valor f en la lista abierta
-        menor_f = float('inf')
-        nodo_menor = None
-        indice_menor = 0
-        
-        for i, nodo in enumerate(lista_abierta):
-            if nodo.f < menor_f:
-                menor_f = nodo.f
-                nodo_menor = nodo
-                indice_menor = i
-                
-        if nodo_menor:
-            lista_abierta.pop(indice_menor)
-        return nodo_menor
 
+    def esta_en_lista_cerrada(self, nodo, lista_cerrada):
+       return any(n.x == nodo.x and n.y == nodo.y for n in lista_cerrada)
 
-    def esta_en_lista(self, nodo, lista):
-        # Verifica si un nodo está en una lista
-        for n in lista:
-            if n == nodo:
+    def encontrar_nodo_en_lista(self, nodo, lista):
+        for n in lista.lista: # Accedemos a la lista interna
+            if n.x == nodo.x and n.y == nodo.y:
                 return n
         return None
 
@@ -81,6 +128,7 @@ class AEstrella:
         inicio_y = inicio_y // self.tamano_celda
         objetivo_x = objetivo_x // self.tamano_celda
         objetivo_y = objetivo_y // self.tamano_celda
+    
 
         # Crear nodos de inicio y objetivo
         inicio = Nodo(inicio_x, inicio_y)
@@ -92,14 +140,12 @@ class AEstrella:
         inicio.f = inicio.g + inicio.h
 
         # Lista abierta (nodos por explorar) y lista cerrada (nodos explorados)
-        lista_abierta = [inicio]
+        lista_abierta = ListaPrioridad()
+        lista_abierta.push(inicio)
         lista_cerrada = []
         
-        while lista_abierta:
-            # Obtener el nodo con menor f
-            actual = self.encontrar_menor_f(lista_abierta)
-            if not actual:
-                break
+        while not lista_abierta.esta_vacia():
+            actual = lista_abierta.pop()
 
             # Si llegamos al objetivo
             if actual == objetivo:
@@ -118,19 +164,19 @@ class AEstrella:
             # Explorar vecinos
             for vecino in self.obtener_vecinos(actual):
                 # Ignorar si ya está en la lista cerrada
-                if self.esta_en_lista(vecino, lista_cerrada):
+                if self.esta_en_lista_cerrada(vecino, lista_cerrada):
                     continue
 
                 nuevo_g = actual.g + 1
 
                 # Buscar en lista abierta
-                nodo_existente = self.esta_en_lista(vecino, lista_abierta)
+                nodo_existente = self.encontrar_nodo_en_lista(vecino, lista_abierta)
                 if not nodo_existente:
                     vecino.g = nuevo_g
                     vecino.h = self.distancia_manhattan(vecino, objetivo)
                     vecino.f = vecino.g + vecino.h
                     vecino.padre = actual
-                    lista_abierta.append(vecino)
+                    lista_abierta.push(vecino)
                 elif nuevo_g < nodo_existente.g:
                     nodo_existente.g = nuevo_g
                     nodo_existente.f = nuevo_g + nodo_existente.h

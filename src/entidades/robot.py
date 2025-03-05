@@ -24,19 +24,18 @@ class Robot:
         # Variables para A*
         self.navegador = AEstrella()
         self.ruta_actual = []
-        self.tiempo_recalculo_ruta = 0
-        self.intervalo_recalculo = 60  # Recalcular ruta cada segundo
+        self.destino_x = None
+        self.destino_y = None
 
     def mover_hacia_jugador(self, jugador_x, jugador_y):
-
-        # Recalcular ruta si es necesario
-        self.tiempo_recalculo_ruta -= 1
-        if self.tiempo_recalculo_ruta <= 0:
+        # Siempre recalcular la ruta si el jugador se ha movido
+        if (self.destino_x != jugador_x or self.destino_y != jugador_y):
             self.ruta_actual = self.navegador.encontrar_ruta(
                 int(self.x), int(self.y),
                 int(jugador_x), int(jugador_y)
             )
-            self.tiempo_recalculo_ruta = self.intervalo_recalculo
+            self.destino_x = jugador_x
+            self.destino_y = jugador_y
 
         # Si hay una ruta, seguirla
         if self.ruta_actual:
@@ -55,13 +54,13 @@ class Robot:
                     dx /= distancia
                     dy /= distancia
 
-                # Mover el robot
-                self.x += dx * self.velocidad
-                self.y += dy * self.velocidad
+                    # Mover el robot
+                    self.x += dx * self.velocidad
+                    self.y += dy * self.velocidad
 
-                #Actualizar el cuadrado
-                self.cuadrado.x = self.x
-                self.cuadrado.y = self.y
+                    #Actualizar el cuadrado
+                    self.cuadrado.x = self.x
+                    self.cuadrado.y = self.y
 
     def disparar_a_jugador(self, jugador_x, jugador_y):
         if not self.puede_disparar:
