@@ -24,43 +24,48 @@ class Robot:
         # Variables para A*
         self.navegador = AEstrella()
         self.ruta_actual = []
-        self.destino_x = None
-        self.destino_y = None
+        self.punto_actual_indice = 0
+        self.direccion_actual_x = 0
+        self.direccion_actual_y = 0
+
+    def actualizar_direccion(self, jugador_x, jugador_y):
+        # Obtener nueva ruta
+        nueva_ruta = self.navegador.encontrar_ruta(
+            int(self.x), int(self.y),
+            int(jugador_x), int(jugador_y)
+        )
+        
+        if nueva_ruta and len(nueva_ruta) > 1:
+
+            # Guardar la ruta para visualización
+            self.ruta_actual = nueva_ruta
+
+            # Calcular la dirección basada en el primer punto de la nueva ruta
+            siguiente_punto = nueva_ruta[1]  # Usar el segundo punto para evitar giros bruscos
+            dx = siguiente_punto[0] - self.x
+            dy = siguiente_punto[1] - self.y      
+            distancia = math.sqrt(dx * dx + dy * dy)
+            if distancia != 0:
+                self.direccion_actual_x = dx / distancia
+                self.direccion_actual_y = dy / distancia
 
     def mover_hacia_jugador(self, jugador_x, jugador_y):
-        # Siempre recalcular la ruta si el jugador se ha movido
-        if (self.destino_x != jugador_x or self.destino_y != jugador_y):
-            self.ruta_actual = self.navegador.encontrar_ruta(
-                int(self.x), int(self.y),
-                int(jugador_x), int(jugador_y)
-            )
-            self.destino_x = jugador_x
-            self.destino_y = jugador_y
-
-        # Si hay una ruta, seguirla
-        if self.ruta_actual:
-            siguiente_punto = self.ruta_actual[0]
-            # Calcular la dirección hacia el jugador
-            dx = siguiente_punto[0] - self.x
-            dy = siguiente_punto[1] - self.y
+        # Actualizar dirección basada en la nueva posición del jugador
+        self.actualizar_direccion(jugador_x, jugador_y)
+        
+        # Continuar movimiento en la dirección actual
+        if self.direccion_actual_x != 0 or self.direccion_actual_y != 0:
+            nueva_x = self.x + self.direccion_actual_x * self.velocidad
+            nueva_y = self.y + self.direccion_actual_y * self.velocidad
             
-            # Normalizar la dirección
-            distancia = math.sqrt(dx * dx + dy * dy)
-            if distancia < self.velocidad:
-                self.ruta_actual.pop(0)
-            else: 
-                # Moverse hacia el punto
-                if distancia != 0:
-                    dx /= distancia
-                    dy /= distancia
-
-                    # Mover el robot
-                    self.x += dx * self.velocidad
-                    self.y += dy * self.velocidad
-
-                    #Actualizar el cuadrado
-                    self.cuadrado.x = self.x
-                    self.cuadrado.y = self.y
+            # Verificar límites de la pantalla
+            nueva_x = max(0, min(nueva_x, ANCHO_PANTALLA - self.ancho))
+            nueva_y = max(0, min(nueva_y, ALTO_PANTALLA - self.alto))
+            
+            self.x = nueva_x
+            self.y = nueva_y
+            self.cuadrado.x = self.x
+            self.cuadrado.y = self.y
 
     def disparar_a_jugador(self, jugador_x, jugador_y):
         if not self.puede_disparar:
