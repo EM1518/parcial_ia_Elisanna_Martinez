@@ -3,6 +3,7 @@ import math
 from src.constantes import *
 from src.entidades.bala import Bala
 from src.utilidades.astar import AEstrella
+from src.utilidades.arbol_comportamiento import Secuencia, Selector, PerseguirJugador
 
 
 class Robot:
@@ -27,6 +28,11 @@ class Robot:
         self.punto_actual_indice = 0
         self.direccion_actual_x = 0
         self.direccion_actual_y = 0
+
+        # Árbol de comportamiento
+        self.arbol_comportamiento = Secuencia([
+            PerseguirJugador()
+        ])
 
     def actualizar_direccion(self, jugador_x, jugador_y):
         # Obtener nueva ruta
@@ -104,7 +110,10 @@ class Robot:
             self.tiempo_recarga -= 1
         
         #mover hacia el jugador
-        self.mover_hacia_jugador(jugador_x, jugador_y)
+      #  self.mover_hacia_jugador(jugador_x, jugador_y)
+
+        # Ejecutar árbol de comportamiento
+        self.arbol_comportamiento.ejecutar(self, jugador_x, jugador_y)
 
         #Intentar disparar
         self.disparar_a_jugador(jugador_x, jugador_y)
