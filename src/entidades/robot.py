@@ -3,6 +3,7 @@ import math
 from src.constantes import *
 from src.entidades.bala import Bala
 from src.utilidades.astar import AEstrella
+from src.utilidades.arbol_comportamiento import Selector, Secuencia, JugadorEnRango, Perseguir, Patrullar, Estado
 
 class Robot:
     def __init__(self, x, y):
@@ -20,12 +21,31 @@ class Robot:
         self.puede_disparar = False
         self.velocidad_bala = 5 
         self.distancia_minima_robots = 60  # Distancia mínima que queremos mantener
+        self.estado_actual = "patrulla"
 
         # Variables para A*
         self.navegador = AEstrella()
         self.ruta_actual = []
         self.direccion_actual_x = 0
         self.direccion_actual_y = 0
+
+        # Variables de patrulla
+        self.puntos_patrulla = [
+            (x, y),  # Posición inicial
+            (x + 75, y),  # Derecha
+            (x + 75, y + 75),  # Abajo-derecha
+            (x, y + 75),  # Abajo
+        ]
+        self.punto_patrulla_actual = 0
+
+        # Árbol de comportamiento
+        self.arbol_comportamiento = Selector([
+            Secuencia([
+                JugadorEnRango(150),
+                Perseguir()
+            ]),
+            Patrullar()
+        ])
 
     def mantener_distancia_robots(self, otros_robots):
         # Vector resultante de separación
@@ -83,26 +103,41 @@ class Robot:
                     self.direccion_actual_x /= magnitud
                     self.direccion_actual_y /= magnitud
 
-    def mover_hacia_jugador(self, jugador_x, jugador_y, otros_robots):
-        # Actualizar dirección basada en la nueva posición del jugador
-        self.actualizar_direccion(jugador_x, jugador_y, otros_robots)
-        
-        # Continuar movimiento en la dirección actual
-        if self.direccion_actual_x != 0 or self.direccion_actual_y != 0:
-            nueva_x = self.x + self.direccion_actual_x * self.velocidad
-            nueva_y = self.y + self.direccion_actual_y * self.velocidad
+    def mover_hacia_objetivo(self, objetivo_x, objetivo_y, otros_robots):
+        dx = objetivo_x - self.x
+        dy = objetivo_y - self.y
+        distancia = math.sqrt(dx * dx + dy * dy)
+        if distancia != 0:
+            # Normalizar el vector de dirección
+            dx = dx / distancia
+            dy = dy / distancia
             
-            # Verificar límites de la pantalla
+            # Aplicar velocidad
+            nueva_x = self.x + dx * self.velocidad
+            nueva_y = self.y + dy * self.velocidad
+            
+            # Mantener dentro de los límites
             nueva_x = max(0, min(nueva_x, ANCHO_PANTALLA - self.ancho))
             nueva_y = max(0, min(nueva_y, ALTO_PANTALLA - self.alto))
             
+            # Aplicar separación de otros robots
+            sep_x, sep_y = self.mantener_distancia_robots(otros_robots)
+            if sep_x != 0 or sep_y != 0:
+                nueva_x += sep_x * 0.5
+                nueva_y += sep_y * 0.5
+            
+            # Actualizar posición
             self.x = nueva_x
             self.y = nueva_y
             self.cuadrado.x = self.x
             self.cuadrado.y = self.y
 
+    def mover_hacia_jugador(self, jugador_x, jugador_y, otros_robots):
+        # Actualizar dirección basada en la nueva posición del jugador
+        self.mover_hacia_objetivo(jugador_x, jugador_y, otros_robots)
+        
     def disparar_a_jugador(self, jugador_x, jugador_y):
-        if not self.puede_disparar:
+        if not self.puede_disparar  or self.tiempo_recarga > 0:
             return        
         
         if self.tiempo_recarga <= 0:
@@ -128,9 +163,6 @@ class Robot:
             
     def actualizar(self, jugador_x, jugador_y, otros_robots=None):
 
-        if otros_robots is None:
-            otros_robots = []
-            
         # Reduce el tiempo de espera antes de que el robot pueda disparar
         if self.tiempo_antes_disparar > 0:
             self.tiempo_antes_disparar -= 1
@@ -141,11 +173,30 @@ class Robot:
         if self.tiempo_recarga > 0:
             self.tiempo_recarga -= 1
         
-        #mover hacia el jugador
-        self.mover_hacia_jugador(jugador_x, jugador_y, otros_robots)
+        # Calcular distancia al jugador para determinar comportamiento
+        dx = jugador_x - self.x
+        dy = jugador_y - self.y
+        distancia_jugador = math.sqrt(dx * dx + dy * dy)
 
-        #Intentar disparar
-        self.disparar_a_jugador(jugador_x, jugador_y)
+        if distancia_jugador <= 150:  # Rango de detección
+            self.estado_actual = "persecución"
+            self.mover_hacia_jugador(jugador_x, jugador_y, otros_robots)
+            if self.puede_disparar:
+                self.disparar_a_jugador(jugador_x, jugador_y)
+        else:
+            self.estado_actual = "patrulla"
+            # Obtener punto actual de patrulla
+            punto = self.puntos_patrulla[self.punto_patrulla_actual]
+            # Calcular distancia al punto de patrulla
+            dx_patrulla = punto[0] - self.x
+            dy_patrulla = punto[1] - self.y
+            dist_patrulla = math.sqrt(dx_patrulla * dx_patrulla + dy_patrulla * dy_patrulla)
+            
+            # Si llegamos al punto, ir al siguiente
+            if dist_patrulla < 5:  # 5 píxeles de margen
+                self.punto_patrulla_actual = (self.punto_patrulla_actual + 1) % len(self.puntos_patrulla)
+            else:
+                self.mover_hacia_objetivo(punto[0], punto[1], otros_robots)
 
         # Actualizar balas
         for bala in self.balas[:]:
@@ -155,6 +206,15 @@ class Robot:
 
 
     def dibujar(self, surface):
+        # Dibujar puntos de patrulla y líneas de conexión si está patrullando
+        if self.estado_actual == "patrulla":
+            for i, punto in enumerate(self.puntos_patrulla):
+                # Dibujar punto
+                pygame.draw.circle(surface, (255, 0, 0), (int(punto[0]), int(punto[1])), 3)
+                # Dibujar línea al siguiente punto
+                siguiente = self.puntos_patrulla[(i + 1) % len(self.puntos_patrulla)]
+                pygame.draw.line(surface, (255, 0, 0), punto, siguiente, 1)
+
         # Dibujar la ruta (para depuración)
         if self.ruta_actual:
             for i in range(len(self.ruta_actual) - 1):

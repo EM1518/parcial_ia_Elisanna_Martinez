@@ -19,7 +19,8 @@ class Juego:
 
 
     def reiniciar_juego(self):
-        #crear jugador
+        # Crear jugador en la esquina inferior izquierda
+        margen = 50
         self.jugador = Jugador(ANCHO_PANTALLA // 2, ALTO_PANTALLA // 2)
        
         #crear robots
@@ -30,30 +31,21 @@ class Juego:
         self.jugando = True
         self.victoria = False
 
-    def verificar_distancia_minima(self, x, y, distancia_minima=100):
-        """Verifica si un punto está a una distancia mínima de todos los robots existentes"""
-        for robot in self.robots:
-            dx = x - robot.x
-            dy = y - robot.y
-            distancia = math.sqrt(dx * dx + dy * dy)
-            if distancia < distancia_minima:
-                return False
-        return True
-    
+ 
     def crear_robot(self, cantidad):
-        for _ in range(cantidad):
-            # Intentar crear robot en posición válida
-            intentos = 0
-            while intentos < 100:  # Límite de intentos para evitar bucle infinito
-                x = random.randint(0, ANCHO_PANTALLA - ANCHO_JUGADOR)
-                y = random.randint(0, ALTO_PANTALLA - ALTO_JUGADOR)
-                
-                # Verificar distancia mínima con otros robots
-                if self.verificar_distancia_minima(x, y):
-                    self.robots.append(Robot(x, y))
-                    break
-                
-                intentos += 1
+        # Área para los robots en la esquina superior derecha
+        margen = 50
+        area_x = ANCHO_PANTALLA - 200  # 200 píxeles desde el borde derecho
+        area_y = margen  # Cerca del borde superior
+        
+        for i in range(cantidad):
+            # Colocar robots en formación horizontal
+            x = area_x + (i * 50)  # Separados por 50 píxeles
+            y = area_y
+            # Asegurar que no se salgan de la pantalla
+            x = min(x, ANCHO_PANTALLA - ANCHO_JUGADOR - margen)
+            nuevo_robot = Robot(x, y)
+            self.robots.append(nuevo_robot)
 
     def verificar_colisiones_robots(self):
         # Para cada robot, verificar colisión con otros robots
