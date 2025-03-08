@@ -38,15 +38,6 @@ class Robot:
         ]
         self.punto_patrulla_actual = 0
 
-        # Árbol de comportamiento
-        self.arbol_comportamiento = Selector([
-            Secuencia([
-                JugadorEnRango(150),
-                Perseguir()
-            ]),
-            Patrullar()
-        ])
-
     def mantener_distancia_robots(self, otros_robots):
         # Vector resultante de separación
         separacion_x = 0
@@ -67,7 +58,7 @@ class Robot:
 
         return separacion_x, separacion_y
 
-    def actualizar_direccion(self, jugador_x, jugador_y, otros_robots):
+    def mover_hacia_jugador(self, jugador_x, jugador_y, otros_robots):
         # Obtener nueva ruta
         nueva_ruta = self.navegador.encontrar_ruta(
             int(self.x), int(self.y),
@@ -103,6 +94,19 @@ class Robot:
                     self.direccion_actual_x /= magnitud
                     self.direccion_actual_y /= magnitud
 
+            # Aplicar el movimiento
+            nueva_x = self.x + self.direccion_actual_x * self.velocidad
+            nueva_y = self.y + self.direccion_actual_y * self.velocidad
+            
+            # Mantener dentro de los límites
+            nueva_x = max(0, min(nueva_x, ANCHO_PANTALLA - self.ancho))
+            nueva_y = max(0, min(nueva_y, ALTO_PANTALLA - self.alto))
+            
+            self.x = nueva_x
+            self.y = nueva_y
+            self.cuadrado.x = self.x
+            self.cuadrado.y = self.y
+
     def mover_hacia_objetivo(self, objetivo_x, objetivo_y, otros_robots):
         dx = objetivo_x - self.x
         dy = objetivo_y - self.y
@@ -132,36 +136,72 @@ class Robot:
             self.cuadrado.x = self.x
             self.cuadrado.y = self.y
 
-    def mover_hacia_jugador(self, jugador_x, jugador_y, otros_robots):
-        # Actualizar dirección basada en la nueva posición del jugador
-        self.mover_hacia_objetivo(jugador_x, jugador_y, otros_robots)
+    def mover_en_patrulla(self, otros_robots):
+        punto_actual = self.puntos_patrulla[self.punto_patrulla_actual]
         
-    def disparar_a_jugador(self, jugador_x, jugador_y):
-        if not self.puede_disparar  or self.tiempo_recarga > 0:
-            return        
-        
-        if self.tiempo_recarga <= 0:
-            # Calcular la dirección hacia el jugador
-            dx = jugador_x - self.x
-            dy = jugador_y - self.y
+        # Calcular dirección al punto actual
+        dx = punto_actual[0] - self.x
+        dy = punto_actual[1] - self.y
+        distancia = math.sqrt(dx * dx + dy * dy)
 
-            # Normalizar la dirección
+        # Si estamos cerca del punto actual, comenzar a moverse hacia el siguiente
+        if distancia < 20:  # Aumentado el margen para un movimiento más fluido
+            self.punto_patrulla_actual = (self.punto_patrulla_actual + 1) % len(self.puntos_patrulla)
+            punto_actual = self.puntos_patrulla[self.punto_patrulla_actual]
+            dx = punto_actual[0] - self.x
+            dy = punto_actual[1] - self.y
             distancia = math.sqrt(dx * dx + dy * dy)
-            if distancia != 0:
-                dx /= distancia
-                dy /= distancia
 
-                # crear la bala desde el centro del robot
-                bala_x = self.x + self.ancho // 2 - ANCHO_BALA // 2
-                bala_y = self.y + self.alto // 2 - ALTO_BALA // 2
+        if distancia != 0:
+            # Normalizar vector de dirección
+            dx = dx / distancia
+            dy = dy / distancia
 
-                # Crear bala con velocidad personalizada
-                bala = Bala(bala_x, bala_y, dx, dy)
-                bala.velocidad = self.velocidad_bala  # Sobreescribir la velocidad de la bala
-                self.balas.append(bala)
-                self.tiempo_recarga = self.retraso_disparo
+            # Aplicar movimiento continuo
+            nueva_x = self.x + dx * self.velocidad
+            nueva_y = self.y + dy * self.velocidad
+
+            # Ajustar por colisiones con otros robots
+            sep_x, sep_y = self.mantener_distancia_robots(otros_robots)
+            factor_separacion = 0.5
+            nueva_x += sep_x * factor_separacion
+            nueva_y += sep_y * factor_separacion
+
+            # Mantener dentro de los límites
+            nueva_x = max(0, min(nueva_x, ANCHO_PANTALLA - self.ancho))
+            nueva_y = max(0, min(nueva_y, ALTO_PANTALLA - self.alto))
+
+            # Actualizar posición
+            self.x = nueva_x
+            self.y = nueva_y
+            self.cuadrado.x = self.x
+            self.cuadrado.y = self.y
+
+    def disparar_a_jugador(self, jugador_x, jugador_y):
+        if not self.puede_disparar or self.tiempo_recarga > 0:
+            return        
+    
+        # Calcular la dirección hacia el jugador
+        dx = jugador_x - self.x
+        dy = jugador_y - self.y
+
+        # Normalizar la dirección
+        distancia = math.sqrt(dx * dx + dy * dy)
+        if distancia != 0:
+            dx /= distancia
+            dy /= distancia
+
+            # crear la bala desde el centro del robot
+            bala_x = self.x + self.ancho // 2 - ANCHO_BALA // 2
+            bala_y = self.y + self.alto // 2 - ALTO_BALA // 2
+
+            # Crear bala con velocidad personalizada
+            bala = Bala(bala_x, bala_y, dx, dy)
+            bala.velocidad = self.velocidad_bala  # Sobreescribir la velocidad de la bala
+            self.balas.append(bala)
+            self.tiempo_recarga = self.retraso_disparo
             
-    def actualizar(self, jugador_x, jugador_y, otros_robots=None):
+    def actualizar(self, jugador_x, jugador_y, otros_robots, forzar_patrulla=False):
 
         # Reduce el tiempo de espera antes de que el robot pueda disparar
         if self.tiempo_antes_disparar > 0:
@@ -178,26 +218,18 @@ class Robot:
         dy = jugador_y - self.y
         distancia_jugador = math.sqrt(dx * dx + dy * dy)
 
-        if distancia_jugador <= 150:  # Rango de detección
+        # Si el jugador está en su zona de inicio, forzar patrulla
+        if forzar_patrulla:
+            self.estado_actual = "patrulla"
+            self.mover_en_patrulla(otros_robots)
+        else:
+            # Si el jugador salió de la zona, los robots siempre lo persiguen
             self.estado_actual = "persecución"
             self.mover_hacia_jugador(jugador_x, jugador_y, otros_robots)
-            if self.puede_disparar:
+            # Disparar cuando la distancia sea menor a 250 (aumentado el rango)
+            if distancia_jugador <= 500 and self.puede_disparar:
                 self.disparar_a_jugador(jugador_x, jugador_y)
-        else:
-            self.estado_actual = "patrulla"
-            # Obtener punto actual de patrulla
-            punto = self.puntos_patrulla[self.punto_patrulla_actual]
-            # Calcular distancia al punto de patrulla
-            dx_patrulla = punto[0] - self.x
-            dy_patrulla = punto[1] - self.y
-            dist_patrulla = math.sqrt(dx_patrulla * dx_patrulla + dy_patrulla * dy_patrulla)
-            
-            # Si llegamos al punto, ir al siguiente
-            if dist_patrulla < 5:  # 5 píxeles de margen
-                self.punto_patrulla_actual = (self.punto_patrulla_actual + 1) % len(self.puntos_patrulla)
-            else:
-                self.mover_hacia_objetivo(punto[0], punto[1], otros_robots)
-
+ 
         # Actualizar balas
         for bala in self.balas[:]:
             bala.actualizar()

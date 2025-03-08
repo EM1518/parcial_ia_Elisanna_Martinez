@@ -14,14 +14,28 @@ class Juego:
         self.reloj = pygame.time.Clock()
         self.ejecutando = True
 
+        # Definir zona de inicio
+        margen = 50
+        tamano_zona = 150
+        self.zona_inicio = pygame.Rect(
+            margen, 
+            ALTO_PANTALLA - margen - tamano_zona,
+            tamano_zona,
+            tamano_zona
+        )
+
         # Estado del juego
         self.reiniciar_juego()
 
+    def jugador_en_zona_inicio(self):
+        return self.zona_inicio.colliderect(self.jugador.cuadrado)
 
     def reiniciar_juego(self):
-        # Crear jugador en la esquina inferior izquierda
-        margen = 50
-        self.jugador = Jugador(ANCHO_PANTALLA // 2, ALTO_PANTALLA // 2)
+       # Crear jugador en el centro de la zona de inicio
+        self.jugador = Jugador(
+            self.zona_inicio.centerx,
+            self.zona_inicio.centery
+        )
        
         #crear robots
         self.robots = []
@@ -30,6 +44,7 @@ class Juego:
         # Estado de juego
         self.jugando = True
         self.victoria = False
+        self.jugador_salio = False  # controlar si el jugador ya salió del cuadro seguro
 
  
     def crear_robot(self, cantidad):
@@ -139,11 +154,23 @@ class Juego:
             return
 
         self.jugador.actualizar()
+       
+        # Verificar si el jugador sale de la zona por primera vez
+        if not self.jugador_salio and not self.jugador_en_zona_inicio():
+            self.jugador_salio = True
+        
+        # Los robots patrullan solo si el jugador no ha salido aún
+        forzar_patrulla = not self.jugador_salio
 
         # Actualizar robots
         for robot in self.robots:
-            robot.actualizar(self.jugador.x, self.jugador.y, self.robots)
-
+            robot.actualizar(
+                self.jugador.x, 
+                self.jugador.y, 
+                self.robots,
+                forzar_patrulla=forzar_patrulla
+            )
+        
         # Verificar colisiones
         self.verificar_colisiones()
         self.verificar_colisiones_robots()
@@ -152,6 +179,10 @@ class Juego:
         self.pantalla.fill(NEGRO)
 
         if self.jugando:
+            # Solo dibujar la zona de inicio si el jugador no ha salido
+            if not self.jugador_salio:
+                pygame.draw.rect(self.pantalla, (50, 50, 50), self.zona_inicio, 2)
+            
             self.jugador.dibujar(self.pantalla)
             # Dibujar robots
             for robot in self.robots:
