@@ -13,11 +13,17 @@ class Bala:
         self.direccion_y = direccion_y
         self.cuadrado = pygame.Rect(x, y, self.ancho, self.alto)
 
-    def actualizar(self):
+    def actualizar(self, laberinto=None):
         self.x +=  self.direccion_x * self.velocidad
         self.y +=  self.direccion_y * self.velocidad   
         self.cuadrado.x = self.x
         self.cuadrado.y = self.y
+
+        # Verificar colisión con paredes si se proporciona un laberinto
+        if laberinto and laberinto.verificar_colision(self.cuadrado):
+            return True  # Indicar que la bala colisionó
+
+        return False  # Indicar que la bala no colisionó
 
     def dibujar(self, surface):
         pygame.draw.rect(surface, AMARILLO, self.cuadrado)

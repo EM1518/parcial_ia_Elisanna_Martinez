@@ -1,5 +1,6 @@
 import pygame
 import math
+import random
 from src.constantes import *
 from src.entidades.bala import Bala
 from src.utilidades.astar import AEstrella
@@ -11,16 +12,16 @@ class Robot:
         self.y = y
         self.ancho = ANCHO_JUGADOR #usar el mismo que el jugador
         self.alto = ALTO_JUGADOR
-        self.velocidad = 1 #mas lento que el jugador
+        self.velocidad = 1
         self.cuadrado = pygame.Rect(x, y, self.ancho, self.alto)
         self.color = AMARILLO
         self.balas = []
         self.tiempo_recarga = 0
-        self.retraso_disparo = 120 # mas lento que el jugador
+        self.retraso_disparo = 120
         self.tiempo_antes_disparar = 180  # 3 segundos 
         self.puede_disparar = False
         self.velocidad_bala = 5 
-        self.distancia_minima_robots = 60  # Distancia mínima que queremos mantener
+        self.distancia_minima_robots = 60
         self.estado_actual = "patrulla"
 
         # Variables para A*
@@ -46,7 +47,7 @@ class Robot:
         Configura el árbol de comportamiento del robot
         """
         # Crea los nodos de comportamiento
-        jugador_en_rango = JugadorEnRango(250)  # Detecta al jugador en un rango de 200 píxeles
+        jugador_en_rango = JugadorEnRango(250)  # Detecta al jugador en un rango de X píxeles
         perseguir = Perseguir()  # El robot persigue al jugador
         secuencia_perseguir = Secuencia([jugador_en_rango, perseguir])  # Secuencia: primero detectar, luego perseguir
 
@@ -75,7 +76,7 @@ class Robot:
 
         return separacion_x, separacion_y
 
-    def mover_hacia_jugador(self, jugador_x, jugador_y, otros_robots):
+    def mover_hacia_jugador(self, jugador_x, jugador_y, otros_robots, laberinto=None):
         # Obtener nueva ruta
         nueva_ruta = self.navegador.encontrar_ruta(
             int(self.x), int(self.y),
@@ -119,11 +120,23 @@ class Robot:
             # Mantener dentro de los límites
             nueva_x = max(0, min(nueva_x, ANCHO_PANTALLA - self.ancho))
             nueva_y = max(0, min(nueva_y, ALTO_PANTALLA - self.alto))
-            
+
+            # Guardar posición anterior
+            x_anterior = self.x
+            y_anterior = self.y
+
             self.x = nueva_x
             self.y = nueva_y
             self.cuadrado.x = self.x
             self.cuadrado.y = self.y
+
+            # Verificar colisión con paredes
+            if laberinto and laberinto.verificar_colision(self.cuadrado):
+                # Si colisiona, volver a la posición anterior
+                self.x = x_anterior
+                self.y = y_anterior
+                self.cuadrado.x = self.x
+                self.cuadrado.y = self.y
 
     def mover_hacia_objetivo(self, objetivo_x, objetivo_y, otros_robots):
         dx = objetivo_x - self.x
@@ -154,7 +167,15 @@ class Robot:
             self.cuadrado.x = self.x
             self.cuadrado.y = self.y
 
-    def mover_en_patrulla(self, otros_robots):
+    def mover_en_patrulla(self, otros_robots, laberinto=None):
+        # Si no hay puntos de patrulla válidos, crear nuevos puntos seguros
+        if not self.puntos_patrulla or len(self.puntos_patrulla) < 2:
+            self.generar_puntos_patrulla_seguros(laberinto)
+
+        # Si aún no hay puntos de patrulla válidos después de intentar regenerarlos, simplemente girar en el lugar
+        if not self.puntos_patrulla or len(self.puntos_patrulla) < 2:
+            return
+
         punto_actual = self.puntos_patrulla[self.punto_patrulla_actual]
         
         # Calcular dirección al punto actual
@@ -163,12 +184,9 @@ class Robot:
         distancia = math.sqrt(dx * dx + dy * dy)
 
         # Si estamos cerca del punto actual, comenzar a moverse hacia el siguiente
-        if distancia < 20:  # Aumentado el margen para un movimiento más fluido
+        if distancia < 10:  # Aumentado el margen para un movimiento más fluido
             self.punto_patrulla_actual = (self.punto_patrulla_actual + 1) % len(self.puntos_patrulla)
-            punto_actual = self.puntos_patrulla[self.punto_patrulla_actual]
-            dx = punto_actual[0] - self.x
-            dy = punto_actual[1] - self.y
-            distancia = math.sqrt(dx * dx + dy * dy)
+            return
 
         if distancia != 0:
             # Normalizar vector de dirección
@@ -179,21 +197,113 @@ class Robot:
             nueva_x = self.x + dx * self.velocidad
             nueva_y = self.y + dy * self.velocidad
 
-            # Ajustar por colisiones con otros robots
-            sep_x, sep_y = self.mantener_distancia_robots(otros_robots)
-            factor_separacion = 0.5
-            nueva_x += sep_x * factor_separacion
-            nueva_y += sep_y * factor_separacion
-
             # Mantener dentro de los límites
             nueva_x = max(0, min(nueva_x, ANCHO_PANTALLA - self.ancho))
             nueva_y = max(0, min(nueva_y, ALTO_PANTALLA - self.alto))
+
+            # Guardar posición anterior
+            x_anterior = self.x
+            y_anterior = self.y
 
             # Actualizar posición
             self.x = nueva_x
             self.y = nueva_y
             self.cuadrado.x = self.x
             self.cuadrado.y = self.y
+
+        # Verificar colisión con paredes
+        if laberinto and laberinto.verificar_colision(self.cuadrado):
+            # Si colisiona, volver a la posición anterior
+            self.x = x_anterior
+            self.y = y_anterior
+            self.cuadrado.x = self.x
+            self.cuadrado.y = self.y
+
+            # Intentar regenerar puntos de patrulla si colisiona frecuentemente
+            self.punto_patrulla_actual = (self.punto_patrulla_actual + 1) % len(self.puntos_patrulla)
+
+    def generar_puntos_patrulla_seguros(self, laberinto):
+        """Genera puntos de patrulla y seguros que no colisionen con paredes"""
+        if not laberinto:
+            return
+
+        # Limpiar puntos existentes
+        self.puntos_patrulla = []
+
+        # Siempre añadir la posición actual como punto inicial
+        self.puntos_patrulla.append((self.x, self.y))
+
+        #  añadir solo 2 puntos en direcciones simples: arriba/abajo y derecha/izquierda
+        distancia = 50  # Usar una distancia fija y corta
+
+        # Direcciones cardinales simplificadas
+        direcciones = [
+            (distancia, 0),  # Derecha
+            (-distancia, 0),  # Izquierda
+            (0, distancia),  # Abajo
+            (0, -distancia)  # Arriba
+        ]
+
+        # Probar cada dirección
+        for dx, dy in direcciones:
+            x = self.x + dx
+            y = self.y + dy
+
+            # Mantener dentro de los límites de la pantalla
+            x = max(20, min(x, ANCHO_PANTALLA - 20))
+            y = max(20, min(y, ALTO_PANTALLA - 20))
+
+            # Verificar que no colisione con paredes
+            temp_rect = pygame.Rect(x - self.ancho / 2, y - self.alto / 2, self.ancho, self.alto)
+            if not laberinto.verificar_colision(temp_rect):
+                self.puntos_patrulla.append((x, y))
+                # Limitar a solo 2 puntos adicionales
+                if len(self.puntos_patrulla) >= 3:
+                    break
+
+        # Si no se encontró ningún punto adicional, añadir uno muy cercano
+        if len(self.puntos_patrulla) < 2:
+            for d in range(10, 31, 10):  # Distancias cortas
+                for angle in range(0, 360, 90):  # Direcciones cardinales
+                    rad = math.radians(angle)
+                    x = self.x + math.cos(rad) * d
+                    y = self.y + math.sin(rad) * d
+
+                    # Mantener dentro de los límites
+                    x = max(20, min(x, ANCHO_PANTALLA - 20))
+                    y = max(20, min(y, ALTO_PANTALLA - 20))
+
+                    # Verificar que no colisione con paredes
+                    temp_rect = pygame.Rect(x - self.ancho / 2, y - self.alto / 2, self.ancho, self.alto)
+                    if not laberinto.verificar_colision(temp_rect):
+                        self.puntos_patrulla.append((x, y))
+                        break
+
+                if len(self.puntos_patrulla) >= 2:
+                    break
+
+        # si solo tenemos un punto, duplicarlo para tener al menos dos
+        if len(self.puntos_patrulla) == 1:
+            self.puntos_patrulla.append(self.puntos_patrulla[0])
+
+        # Reiniciar el índice de patrulla
+        self.punto_patrulla_actual = 0
+
+    # método para verificar si hay un camino válido sin obstáculos
+    def verificar_camino(self, x1, y1, x2, y2, laberinto):
+        """Verifica si hay un camino sin obstáculos entre dos puntos"""
+        # Versión simplificada: verificar si la línea recta entre los puntos colisiona con paredes
+        # Muestrear varios puntos a lo largo de la línea
+        for t in range(1, 10):  # 9 puntos entre el inicio y el final
+            t = t / 10.0
+            x = x1 + t * (x2 - x1)
+            y = y1 + t * (y2 - y1)
+
+            temp_rect = pygame.Rect(x - self.ancho / 2, y - self.alto / 2, self.ancho, self.alto)
+            if laberinto.verificar_colision(temp_rect):
+                return False  # Hay obstáculo en el camino
+
+        return True  # No hay obstáculos en el camino
 
     def disparar_a_jugador(self, jugador_x, jugador_y):
         if not self.puede_disparar or self.tiempo_recarga > 0:
@@ -219,14 +329,18 @@ class Robot:
             self.balas.append(bala)
             self.tiempo_recarga = self.retraso_disparo
             
-    def actualizar(self, jugador_x, jugador_y, otros_robots, forzar_patrulla=False):
+    def actualizar(self, jugador_x, jugador_y, otros_robots, forzar_patrulla=False, laberinto=None):
+        # Asegurarse de que los puntos de patrulla sean válidos al inicio
+        if not hasattr(self, 'patrulla_inicializada') or not self.patrulla_inicializada:
+            self.generar_puntos_patrulla_seguros(laberinto)
+            self.patrulla_inicializada = True
 
+        # Gestión de tiempos
         # Reduce el tiempo de espera antes de que el robot pueda disparar
         if self.tiempo_antes_disparar > 0:
             self.tiempo_antes_disparar -= 1
             if self.tiempo_antes_disparar <= 0:
-                self.puede_disparar = True       
-
+                self.puede_disparar = True
         # Actualizar tiempo de recarga
         if self.tiempo_recarga > 0:
             self.tiempo_recarga -= 1
@@ -236,30 +350,41 @@ class Robot:
         dy = jugador_y - self.y
         distancia_jugador = math.sqrt(dx * dx + dy * dy)
 
+        # Posición anterior para detectar colisiones con paredes
+        x_anterior = self.x
+        y_anterior = self.y
+
         # Si el jugador está en su zona de inicio, forzar patrulla
         if forzar_patrulla:
             self.estado_actual = "patrulla"
-            self.mover_en_patrulla(otros_robots)
+            self.mover_en_patrulla(otros_robots, laberinto)
         else:
-            # Ejecuta el árbol de comportamiento para determinar el comportamiento del robot
-          #  resultado = self.arbol_comportamiento.ejecutar(self, jugador_x, jugador_y, otros_robots)
-
             # Si estamos en modo persecución y el jugador está cerca, disparamos
             if distancia_jugador <= 250:
                 self.estado_actual = "persecución"
-                self.mover_hacia_jugador(jugador_x, jugador_y, otros_robots)
+                self.mover_hacia_jugador(jugador_x, jugador_y, otros_robots, laberinto)
                 # Si está suficientemente cerca, disparar
                 if distancia_jugador <= 200 and self.puede_disparar:
                     self.disparar_a_jugador(jugador_x, jugador_y)
             else:
                 # Si no está en rango, patrullar
                 self.estado_actual = "patrulla"
-                self.mover_en_patrulla(otros_robots)
+                self.mover_en_patrulla(otros_robots, laberinto)
+
+        # Verificar colisión con paredes después de mover
+        if laberinto and laberinto.verificar_colision(self.cuadrado):
+            # Si colisiona, volver a la posición anterior
+            self.x = x_anterior
+            self.y = y_anterior
+            self.cuadrado.x = self.x
+            self.cuadrado.y = self.y
 
         # Actualizar balas
         for bala in self.balas[:]:
-            bala.actualizar()
-            if bala.esta_fuera_pantalla():
+            # Si la bala colisiona con una pared, eliminarla
+            if laberinto and bala.actualizar(laberinto):
+                self.balas.remove(bala)
+            elif bala.esta_fuera_pantalla():
                 self.balas.remove(bala)
 
 

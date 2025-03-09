@@ -8,6 +8,8 @@ class Jugador:
     def __init__(self, x, y):
         self.x = x
         self.y = y
+        self.ultima_x = x
+        self.ultima_y = y
         self.ancho = ANCHO_JUGADOR
         self.alto = ALTO_JUGADOR
         self.velocidad = 5
@@ -32,26 +34,18 @@ class Jugador:
         """
         self.x = self.ultima_x
         self.y = self.ultima_y
-        self.rectangulo.x = round(self.x)
-        self.rectangulo.y = round(self.y)
+        self.cuadrado.x = round(self.x)
+        self.cuadrado.y = round(self.y)
 
-    def disparar(self, direccion_x, direccion_y):
+    def disparar(self, dx, dy):
         if self.tiempo_recarga <= 0:
-            bala_x = self.x + self.ancho // 2 - 2.5
-            bala_y = self.y + self.alto // 2 - 2.5
-
-            # Normalizar la dirección
-            length = math.sqrt(direccion_x ** 2 + direccion_y ** 2)
-            if length != 0:
-                self.tiempo_recarga -= 1
-                direccion_x /= length
-                direccion_y /= length
+            bala_x = self.x + self.ancho // 2 - ANCHO_BALA // 2
+            bala_y = self.y + self.alto // 2 - ALTO_BALA // 2
     
-            self.balas.append(Bala(bala_x, bala_y, direccion_x, direccion_y))
+            self.balas.append(Bala(bala_x, bala_y, dx, dy))
             self.tiempo_recarga = self.retraso_disparo
 
-    def actualizar(self):
-
+    def actualizar(self, laberinto=None):
         """
         Actualiza la posición y estado del jugador
         """
@@ -74,7 +68,7 @@ class Jugador:
             self.x = max(0, min(self.x, ANCHO_PANTALLA - self.ancho))
             self.y = max(0, min(self.y, ALTO_PANTALLA - self.alto))
 
-            # Actualizar el rectángulo de colisión
+            # Actualizar el cuadrado de colisión
             self.cuadrado.x = round(self.x)
             self.cuadrado.y = round(self.y)
 
@@ -84,8 +78,10 @@ class Jugador:
 
         # Actualizar balas
         for bala in self.balas[:]:
-            bala.actualizar()
-            if bala.esta_fuera_pantalla():
+            # Si la bala colisiona con una pared, eliminarla
+            if laberinto and bala.actualizar(laberinto):
+                self.balas.remove(bala)
+            elif bala.esta_fuera_pantalla():
                 self.balas.remove(bala)
    
     def dibujar(self, surface):
