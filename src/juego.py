@@ -1,15 +1,226 @@
 import pygame
 import random
 import math
+import os
 from src.constantes import *
 from src.entidades.jugador import Jugador
 from src.entidades.robot import Robot
 from src.utilidades.colisiones import detectar_colision_entidades, detectar_colision_balas_entidad
 from src.laberinto import Laberinto
 
+class Menu:
+    def __init__(self, pantalla):
+        self.pantalla = pantalla
+        self.estado_menu = "principal"  # principal, instrucciones, pausa, game_over, victoria
+        # Cargar fuentes
+        self.fuente_titulo = pygame.font.Font(None, 74)
+        self.fuente_opciones = pygame.font.Font(None, 48)
+        self.fuente_pequena = pygame.font.Font(None, 36)
+        # Colores adicionales para el menú
+        self.color_seleccion = (255, 255, 0)  # Amarillo para opción seleccionada
+        self.opcion_seleccionada = 0
+        # Opciones del menú principal
+        self.opciones_principal = ["Jugar", "Instrucciones", "Salir"]
+        # Opciones del menú de pausa
+        self.opciones_pausa = ["Continuar", "Reiniciar", "Salir al menú"]
+        # Opciones de game over
+        self.opciones_game_over = ["Reiniciar", "Salir al menú"]
+        # Tiempo para animaciones
+        self.tiempo = 0
+
+    def actualizar(self):
+        self.tiempo += 1
+
+    def manejar_eventos(self, evento):
+        if evento.type == pygame.KEYDOWN:
+            if self.estado_menu in ["principal", "pausa", "game_over", "victoria"]:
+                if evento.key == pygame.K_UP:
+                    self.opcion_seleccionada = (self.opcion_seleccionada - 1) % len(self.obtener_opciones_actuales())
+                elif evento.key == pygame.K_DOWN:
+                    self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.obtener_opciones_actuales())
+                elif evento.key == pygame.K_RETURN:
+                    return self.seleccionar_opcion()
+            if evento.key == pygame.K_ESCAPE and self.estado_menu == "instrucciones":
+                self.estado_menu = "principal"
+                self.opcion_seleccionada = 0
+                return None
+        return None
+
+    def obtener_opciones_actuales(self):
+        if self.estado_menu == "principal":
+            return self.opciones_principal
+        elif self.estado_menu == "pausa":
+            return self.opciones_pausa
+        elif self.estado_menu == "game_over" or self.estado_menu == "victoria":
+            return self.opciones_game_over
+        return []
+
+    def seleccionar_opcion(self):
+        if self.estado_menu == "principal":
+            if self.opcion_seleccionada == 0:  # Jugar
+                return "jugar"
+            elif self.opcion_seleccionada == 1:  # Instrucciones
+                self.estado_menu = "instrucciones"
+                return None
+            elif self.opcion_seleccionada == 2:  # Salir
+                return "salir"
+        elif self.estado_menu == "pausa":
+            if self.opcion_seleccionada == 0:  # Continuar
+                return "continuar"
+            elif self.opcion_seleccionada == 1:  # Reiniciar
+                return "reiniciar"
+            elif self.opcion_seleccionada == 2:  # Salir al menú
+                return "menu"
+        elif self.estado_menu == "game_over" or self.estado_menu == "victoria":
+            if self.opcion_seleccionada == 0:  # Reiniciar
+                return "reiniciar"
+            elif self.opcion_seleccionada == 1:  # Salir al menú
+                return "menu"
+        return None
+
+    def dibujar(self):
+        # Fondo con efecto de desvanecimiento
+        s = pygame.Surface((ANCHO_PANTALLA, ALTO_PANTALLA), pygame.SRCALPHA)
+        s.fill((0, 0, 0, 200))  # Fondo semi-transparente
+        self.pantalla.blit(s, (0, 0))
+
+        if self.estado_menu == "principal":
+            self.dibujar_menu_principal()
+        elif self.estado_menu == "instrucciones":
+            self.dibujar_instrucciones()
+        elif self.estado_menu == "pausa":
+            self.dibujar_menu_pausa()
+        elif self.estado_menu == "game_over":
+            self.dibujar_game_over()
+        elif self.estado_menu == "victoria":
+            self.dibujar_victoria()
+
+    def dibujar_menu_principal(self):
+        # Título con efecto de pulso
+        escala = 1.0 + 0.05 * math.sin(self.tiempo * 0.05)
+        titulo = self.fuente_titulo.render("BERSERK (1980)", True, ROJO)
+        rect_titulo = titulo.get_rect(center=(ANCHO_PANTALLA // 2, 100))
+        # Aplicar escala
+        ancho_original = titulo.get_width()
+        alto_original = titulo.get_height()
+        titulo_escalado = pygame.transform.scale(titulo,
+                                                 (int(ancho_original * escala),
+                                                  int(alto_original * escala)))
+        rect_titulo_escalado = titulo_escalado.get_rect(center=(ANCHO_PANTALLA // 2, 100))
+        self.pantalla.blit(titulo_escalado, rect_titulo_escalado)
+
+        # Opciones
+        for i, opcion in enumerate(self.opciones_principal):
+            color = self.color_seleccion if i == self.opcion_seleccionada else BLANCO
+            y_pos = 250 + i * 60
+            # Efecto de flecha para la opción seleccionada
+            if i == self.opcion_seleccionada:
+                flecha = "> " + opcion + " <"
+                texto = self.fuente_opciones.render(flecha, True, color)
+            else:
+                texto = self.fuente_opciones.render(opcion, True, color)
+            rect_texto = texto.get_rect(center=(ANCHO_PANTALLA // 2, y_pos))
+            self.pantalla.blit(texto, rect_texto)
+
+        # Créditos
+        creditos = self.fuente_pequena.render("Proyecto de IA - 2025", True, BLANCO)
+        rect_creditos = creditos.get_rect(center=(ANCHO_PANTALLA // 2, ALTO_PANTALLA - 50))
+        self.pantalla.blit(creditos, rect_creditos)
+
+    def dibujar_instrucciones(self):
+        # Título
+        titulo = self.fuente_titulo.render("INSTRUCCIONES", True, BLANCO)
+        rect_titulo = titulo.get_rect(center=(ANCHO_PANTALLA // 2, 80))
+        self.pantalla.blit(titulo, rect_titulo)
+
+        # Instrucciones
+        instrucciones = [
+            "Objetivo: Escapa de la base llena de robots",
+            "Controles:",
+            "- Flechas: Moverse",
+            "- W/A/S/D: Disparar",
+            "- ESC: Pausar el juego",
+            "",
+            "Elimina a todos los robots y encuentra la salida",
+            "para avanzar al siguiente nivel",
+            "",
+            "¡Cuidado con las paredes electrificadas!",
+            "",
+            "Presiona ESC para volver"
+        ]
+
+        for i, linea in enumerate(instrucciones):
+            texto = self.fuente_pequena.render(linea, True, BLANCO)
+            rect_texto = texto.get_rect(midleft=(ANCHO_PANTALLA // 4, 150 + i * 35))
+            self.pantalla.blit(texto, rect_texto)
+
+    def dibujar_menu_pausa(self):
+        # Título
+        titulo = self.fuente_titulo.render("PAUSA", True, BLANCO)
+        rect_titulo = titulo.get_rect(center=(ANCHO_PANTALLA // 2, 120))
+        self.pantalla.blit(titulo, rect_titulo)
+
+        # Opciones
+        for i, opcion in enumerate(self.opciones_pausa):
+            color = self.color_seleccion if i == self.opcion_seleccionada else BLANCO
+            y_pos = 250 + i * 60
+            if i == self.opcion_seleccionada:
+                flecha = "> " + opcion + " <"
+                texto = self.fuente_opciones.render(flecha, True, color)
+            else:
+                texto = self.fuente_opciones.render(opcion, True, color)
+            rect_texto = texto.get_rect(center=(ANCHO_PANTALLA // 2, y_pos))
+            self.pantalla.blit(texto, rect_texto)
+
+    def dibujar_game_over(self):
+        # Título con efecto de temblor
+        offset_x = random.randint(-2, 2)
+        offset_y = random.randint(-2, 2)
+        titulo = self.fuente_titulo.render("GAME OVER", True, ROJO)
+        rect_titulo = titulo.get_rect(center=(ANCHO_PANTALLA // 2 + offset_x, 120 + offset_y))
+        self.pantalla.blit(titulo, rect_titulo)
+
+        # Opciones
+        for i, opcion in enumerate(self.opciones_game_over):
+            color = self.color_seleccion if i == self.opcion_seleccionada else BLANCO
+            y_pos = 250 + i * 60
+            if i == self.opcion_seleccionada:
+                flecha = "> " + opcion + " <"
+                texto = self.fuente_opciones.render(flecha, True, color)
+            else:
+                texto = self.fuente_opciones.render(opcion, True, color)
+            rect_texto = texto.get_rect(center=(ANCHO_PANTALLA // 2, y_pos))
+            self.pantalla.blit(texto, rect_texto)
+
+    def dibujar_victoria(self):
+        # Título con efecto brillante
+        brillo = abs(math.sin(self.tiempo * 0.1)) * 255
+        color_brillante = (255, 255, min(100 + int(brillo), 255))
+        titulo = self.fuente_titulo.render("¡VICTORIA!", True, color_brillante)
+        rect_titulo = titulo.get_rect(center=(ANCHO_PANTALLA // 2, 120))
+        self.pantalla.blit(titulo, rect_titulo)
+
+        # Mensaje de felicitación
+        mensaje = self.fuente_pequena.render("¡Has escapado de la base robótica!", True, BLANCO)
+        rect_mensaje = mensaje.get_rect(center=(ANCHO_PANTALLA // 2, 180))
+        self.pantalla.blit(mensaje, rect_mensaje)
+
+        # Opciones
+        for i, opcion in enumerate(self.opciones_game_over):
+            color = self.color_seleccion if i == self.opcion_seleccionada else BLANCO
+            y_pos = 250 + i * 60
+            if i == self.opcion_seleccionada:
+                flecha = "> " + opcion + " <"
+                texto = self.fuente_opciones.render(flecha, True, color)
+            else:
+                texto = self.fuente_opciones.render(opcion, True, color)
+            rect_texto = texto.get_rect(center=(ANCHO_PANTALLA // 2, y_pos))
+            self.pantalla.blit(texto, rect_texto)
+
 class Juego:
     def __init__(self):
         pygame.init()
+        pygame.mixer.init()
         self.pantalla = pygame.display.set_mode((ANCHO_PANTALLA, ALTO_PANTALLA))
         pygame.display.set_caption("Berzerk")
         self.reloj = pygame.time.Clock()
@@ -39,8 +250,43 @@ class Juego:
         # Inicializar el laberinto
         self.laberinto = Laberinto(self.nivel_actual)
 
+        # Cargar sonidos
+        self.cargar_sonidos()
+
+        # Crear menú
+        self.menu = Menu(self.pantalla)
+        self.estado_juego = "menu"  # menu, jugando, pausa
+
         # Estado del juego
         self.reiniciar_juego()
+
+    def cargar_sonidos(self):
+        # Asegúrate de que existe la carpeta de sonidos
+        self.sonidos = {}
+        try:
+            # Sonidos del juego
+            self.sonidos['disparo_jugador'] = pygame.mixer.Sound('src/assets/sonidos/disparo_jugador.wav')
+            self.sonidos['disparo_robot'] = pygame.mixer.Sound('src/assets/sonidos/disparo_robot.wav')
+            self.sonidos['explosion'] = pygame.mixer.Sound('src/assets/sonidos/explosion.wav')
+            self.sonidos['nivel_completado'] = pygame.mixer.Sound('src/assets/sonidos/nivel_completado.wav')
+            self.sonidos['game_over'] = pygame.mixer.Sound('src/assets/sonidos/game_over.wav')
+
+            # Ajustar volumen
+            for sonido in self.sonidos.values():
+                sonido.set_volume(0.3)
+
+            # Música de fondo
+            pygame.mixer.music.load('src/assets/sonidos/musica_fondo.mp3')
+            pygame.mixer.music.set_volume(0.2)
+            pygame.mixer.music.play(-1)  # -1 para repetir infinitamente
+        except Exception as e:
+            print(f"Error al cargar sonidos: {e}")
+            # Crear directorio de sonidos si no existe
+            os.makedirs('src/assets/sonidos', exist_ok=True)
+
+    def reproducir_sonido(self, nombre_sonido):
+        if nombre_sonido in self.sonidos:
+            self.sonidos[nombre_sonido].play()
 
     def jugador_en_zona_inicio(self):
         return self.zona_inicio.colliderect(self.jugador.cuadrado)
@@ -236,31 +482,42 @@ class Juego:
         # Verificar colisiones entre balas del jugador y robots
         for robot in self.robots[:]:  # Usamos [:] para poder modificar la lista durante la iteración
             if detectar_colision_balas_entidad(self.jugador.balas, robot):
+                self.reproducir_sonido('explosion')
                 self.robots.remove(robot)  # Eliminar robot si es golpeado
 
         # Verificar colisiones entre balas de robots y jugador
         for robot in self.robots:
             if detectar_colision_balas_entidad(robot.balas, self.jugador):
+                self.reproducir_sonido('game_over')
                 self.jugando = False  # El jugador pierde si es golpeado
                 self.victoria = False
+                self.menu.estado_menu = "game_over"
+                self.estado_juego = "menu"
                 return
 
         # Verificar colisiones directas entre jugador y robots
         for robot in self.robots:
             if detectar_colision_entidades(self.jugador, robot):
+                self.reproducir_sonido('game_over')
                 self.jugando = False
                 self.victoria = False
+                self.menu.estado_menu = "game_over"
+                self.estado_juego = "menu"
                 return
 
         # Verificar colisiones entre jugador y paredes
         if self.laberinto.verificar_colision(self.jugador.cuadrado):
+            self.reproducir_sonido('game_over')
             # Si el jugador colisiona con una pared pierde
             self.jugando = False
             self.victoria = False
+            self.menu.estado_menu = "game_over"
+            self.estado_juego = "menu"
             return
 
         # Verificar si el jugador llega a la zona de salida
         if self.zona_salida.colliderect(self.jugador.cuadrado) and len(self.robots) == 0:
+            self.reproducir_sonido('nivel_completado')
             if self.nivel_actual < 3:
                 # Pasar al siguiente nivel
                 self.pasando_nivel = True
@@ -279,6 +536,8 @@ class Juego:
                 # Victoria final
                 self.jugando = False
                 self.victoria = True
+                self.menu.estado_menu = "victoria"
+                self.estado_juego = "menu"
                 return
 
         # Verificar victoria por eliminar a todos los robots
@@ -290,33 +549,74 @@ class Juego:
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 self.ejecutando = False
-            elif evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_r and not self.jugando:
+
+            # Manejar eventos según el estado del juego
+            if self.estado_juego == "menu":
+                accion = self.menu.manejar_eventos(evento)
+                if accion == "jugar":
+                    self.estado_juego = "jugando"
                     self.reiniciar_juego()
-        
-        if not self.jugando:
-            return
+                elif accion == "salir":
+                    self.ejecutando = False
+                elif accion == "reiniciar":
+                    self.estado_juego = "jugando"
+                    self.nivel_actual = 1
+                    self.laberinto.cambiar_nivel(self.nivel_actual)
+                    self.reiniciar_juego()
+                elif accion == "menu":
+                    self.menu.estado_menu = "principal"
+                    self.menu.opcion_seleccionada = 0
 
-        # Teclas presionadas
-        teclas = pygame.key.get_pressed()
-        dx = teclas[pygame.K_RIGHT] - teclas[pygame.K_LEFT]
-        dy = teclas[pygame.K_DOWN] - teclas[pygame.K_UP]
+            elif self.estado_juego == "jugando":
+                if evento.type == pygame.KEYDOWN:
+                    if evento.key == pygame.K_ESCAPE:
+                        self.estado_juego = "pausa"
+                        self.menu.estado_menu = "pausa"
+                        self.menu.opcion_seleccionada = 0
 
-        self.jugador.dx = dx
-        self.jugador.dy = dy
+            elif self.estado_juego == "pausa":
+                accion = self.menu.manejar_eventos(evento)
+                if accion == "continuar":
+                    self.estado_juego = "jugando"
+                elif accion == "reiniciar":
+                    self.estado_juego = "jugando"
+                    self.reiniciar_juego()
+                elif accion == "menu":
+                    self.menu.estado_menu = "principal"
+                    self.menu.opcion_seleccionada = 0
+                    self.estado_juego = "menu"
 
-        #Sistema de disparo
-        if teclas[pygame.K_w]: #Arriba
-            self.jugador.disparar(0, -1) 
-        if teclas[pygame.K_s]: #Abajo
-            self.jugador.disparar(0, 1)
-        if teclas[pygame.K_a]: #Izquierda
-            self.jugador.disparar(-1, 0)
-        if teclas[pygame.K_d]:  #Derecha
-            self.jugador.disparar(1, 0)
+        if self.estado_juego == "jugando":
+            # Teclas presionadas
+            teclas = pygame.key.get_pressed()
+            dx = teclas[pygame.K_RIGHT] - teclas[pygame.K_LEFT]
+            dy = teclas[pygame.K_DOWN] - teclas[pygame.K_UP]
 
+            self.jugador.mover(dx, dy)
+
+            #Sistema de disparo
+            if teclas[pygame.K_w]: #Arriba
+                self.jugador.disparar(0, -1)
+                self.reproducir_sonido('disparo_jugador')
+            if teclas[pygame.K_s]: #Abajo
+                self.jugador.disparar(0, 1)
+                self.reproducir_sonido('disparo_jugador')
+            if teclas[pygame.K_a]: #Izquierda
+                self.jugador.disparar(-1, 0)
+                self.reproducir_sonido('disparo_jugador')
+            if teclas[pygame.K_d]:  #Derecha
+                self.jugador.disparar(1, 0)
+                self.reproducir_sonido('disparo_jugador')
 
     def actualizar(self):
+
+        if self.estado_juego == "menu":
+            self.menu.actualizar()
+            return
+
+        if self.estado_juego == "pausa":
+            return
+
         if not self.jugando:
             return
 
@@ -325,8 +625,11 @@ class Juego:
         # Verificar colisiones del jugador con las paredes después de actualizar
         if self.laberinto.verificar_colision(self.jugador.cuadrado):
             # Si hay colisión, pierde inmediatamente
+            self.reproducir_sonido('game_over')
             self.jugando = False
             self.victoria = False
+            self.menu.estado_menu = "game_over"
+            self.estado_juego = "menu"
             return
 
         # Verificar si el jugador sale de la zona por primera vez
@@ -350,6 +653,17 @@ class Juego:
                 forzar_patrulla=forzar_patrulla,
                 laberinto=self.laberinto  # Pasar el laberinto para verificar colisiones
             )
+
+            # Hacer que los robots disparen ocasionalmente
+            if robot.estado_actual == "persecución" and random.random() < 0.01:
+                dx = self.jugador.x - robot.x
+                dy = self.jugador.y - robot.y
+                dist = math.sqrt(dx * dx + dy * dy)
+                if dist > 0:
+                    dx /= dist
+                    dy /= dist
+                    robot.disparar_a_jugador(self.jugador.x, self.jugador.y)
+                    self.reproducir_sonido('disparo_robot')
         
         # Verificar colisiones
         self.verificar_colisiones()
@@ -358,10 +672,10 @@ class Juego:
     def dibujar(self):
         self.pantalla.fill(NEGRO)
 
-        if self.jugando:
+        # Dibujamos el laberinto
+        self.laberinto.dibujar(self.pantalla)
 
-            # Dibujamos el laberinto
-            self.laberinto.dibujar(self.pantalla)
+        if self.estado_juego == "jugando" or self.estado_juego == "pausa":
 
             # Dibujamos la zona de salida (verde claro)
             if len(self.robots) == 0:
@@ -382,6 +696,11 @@ class Juego:
             superficie_nivel = fuente.render(texto_nivel, True, BLANCO)
             self.pantalla.blit(superficie_nivel, (10, 10))
 
+            # Mostrar robots restantes
+            texto_robots = f"Robots: {len(self.robots)}"
+            superficie_robots = fuente.render(texto_robots, True, BLANCO)
+            self.pantalla.blit(superficie_robots, (10, 50))
+
             # Mostrar indicaciones si todos los robots están eliminados
             if len(self.robots) == 0:
                 fuente_indicacion = pygame.font.Font(None, 24)
@@ -390,25 +709,9 @@ class Juego:
                 rect_indicacion = superficie_indicacion.get_rect(center=(ANCHO_PANTALLA // 2, 30))
                 self.pantalla.blit(superficie_indicacion, rect_indicacion)
 
-        else:
-            fuente = pygame.font.Font(None, 74)
-            if self.victoria:
-                if self.nivel_actual == 3:
-                    texto = "¡VICTORIA FINAL!"
-                else:
-                    texto = f"¡NIVEL {self.nivel_actual} COMPLETADO!"
-            else:
-                texto = "¡GAME OVER!"
-            superficie_texto = fuente.render(texto, True, BLANCO)
-            rect_texto = superficie_texto.get_rect(center=(ANCHO_PANTALLA/2, ALTO_PANTALLA/2))
-            self.pantalla.blit(superficie_texto, rect_texto)
-
-            # Mostrar mensaje de reinicio
-            fuente_pequena = pygame.font.Font(None, 36)
-            texto_reinicio = "Presiona R para jugar de nuevo"
-            superficie_reinicio = fuente_pequena.render(texto_reinicio, True, BLANCO)
-            rect_reinicio = superficie_reinicio.get_rect(center=(ANCHO_PANTALLA/2, ALTO_PANTALLA/2 + 50))
-            self.pantalla.blit(superficie_reinicio, rect_reinicio)
+        # Dibujar menú si estamos en el estado de menú o pausa
+        if self.estado_juego in ["menu", "pausa"]:
+            self.menu.dibujar()
 
         pygame.display.flip()
 
