@@ -5,6 +5,7 @@ from src.constantes import *
 from src.entidades.jugador import Jugador
 from src.entidades.robot import Robot
 from src.utilidades.colisiones import detectar_colision_entidades, detectar_colision_balas_entidad
+from src.laberinto import Laberinto
 
 class Juego:
     def __init__(self):
@@ -24,6 +25,9 @@ class Juego:
             tamano_zona
         )
 
+        # Inicializar el laberinto
+        self.laberinto = Laberinto()
+
         # Estado del juego
         self.reiniciar_juego()
 
@@ -36,10 +40,12 @@ class Juego:
             self.zona_inicio.centerx,
             self.zona_inicio.centery
         )
+        # Cambiamos el color del jugador a verde 
+        self.jugador.color = VERDE
        
         #crear robots
         self.robots = []
-        self.crear_robot(3) #crear con 3 robots
+        self.crear_robot(6) #crear 6 robots
 
         # Estado de juego
         self.jugando = True
@@ -48,18 +54,26 @@ class Juego:
 
  
     def crear_robot(self, cantidad):
-        # Área para los robots en la esquina superior derecha
-        margen = 50
-        area_x = ANCHO_PANTALLA - 200  # 200 píxeles desde el borde derecho
-        area_y = margen  # Cerca del borde superior
+        # Posiciones predefinidas para los robots 
+        posiciones = [
+            (600, 80),   # Arriba derecha
+            (700, 80),   # Arriba derecha
+            (500, 300),  # Centro derecha
+            (600, 300),  # Centro derecha
+            (500, 500),  # Abajo derecha
+            (700, 500)   # Abajo derecha
+        ]
         
-        for i in range(cantidad):
-            # Colocar robots en formación horizontal
-            x = area_x + (i * 50)  # Separados por 50 píxeles
-            y = area_y
-            # Asegurar que no se salgan de la pantalla
-            x = min(x, ANCHO_PANTALLA - ANCHO_JUGADOR - margen)
+        for i in range(min(cantidad, len(posiciones))):
+            x, y = posiciones[i]
             nuevo_robot = Robot(x, y)
+            # Establecemos rutas de patrulla relativas a su posición
+            nuevo_robot.puntos_patrulla = [
+                (x, y),  # Posición inicial
+                (x + 50, y),  # Derecha
+                (x + 50, y + 50),  # Abajo-derecha
+                (x, y + 50),  # Abajo
+            ]
             self.robots.append(nuevo_robot)
 
     def verificar_colisiones_robots(self):
@@ -115,6 +129,13 @@ class Juego:
                 self.victoria = False
                 return
 
+        # Verificar colisiones entre jugador y paredes
+        if self.laberinto.verificar_colision(self.jugador.cuadrado):
+            # Si el jugador colisiona con una pared pierde
+            self.jugando = False
+            self.victoria = False
+            return
+
         # Verificar victoria
         if len(self.robots) == 0:
             self.jugando = False
@@ -136,7 +157,9 @@ class Juego:
 
         dx = teclas[pygame.K_RIGHT] - teclas[pygame.K_LEFT]
         dy = teclas[pygame.K_DOWN] - teclas[pygame.K_UP]
-        self.jugador.mover(dx, dy)
+
+        self.jugador.dx = dx
+        self.jugador.dy = dy
 
         #Sistema de disparo
         if teclas[pygame.K_w]: #Arriba
@@ -153,8 +176,19 @@ class Juego:
         if not self.jugando:
             return
 
+        # Guardar posición anterior del jugador para verificar colisiones
+        pos_anterior_x = self.jugador.x
+        pos_anterior_y = self.jugador.y
+
         self.jugador.actualizar()
-       
+
+        # Verificar colisiones del jugador con las paredes después de actualizar
+        if self.laberinto.verificar_colision(self.jugador.cuadrado):
+            # Si hay colisión, pierde inmediatamente
+            self.jugando = False
+            self.victoria = False
+            return
+
         # Verificar si el jugador sale de la zona por primera vez
         if not self.jugador_salio and not self.jugador_en_zona_inicio():
             self.jugador_salio = True
@@ -164,6 +198,11 @@ class Juego:
 
         # Actualizar robots
         for robot in self.robots:
+            # Pasar las paredes al navegador A* solo una vez
+            if not hasattr(robot, 'obstaculos_actualizados') or not robot.obstaculos_actualizados:
+                robot.navegador.actualizar_obstaculos(self.laberinto.obtener_paredes_para_astar())
+                robot.obstaculos_actualizados = True
+
             robot.actualizar(
                 self.jugador.x, 
                 self.jugador.y, 
@@ -179,6 +218,10 @@ class Juego:
         self.pantalla.fill(NEGRO)
 
         if self.jugando:
+
+            # Dibujamos el laberinto
+            self.laberinto.dibujar(self.pantalla)
+
             # Solo dibujar la zona de inicio si el jugador no ha salido
             if not self.jugador_salio:
                 pygame.draw.rect(self.pantalla, (50, 50, 50), self.zona_inicio, 2)
@@ -188,6 +231,9 @@ class Juego:
             for robot in self.robots:
                 robot.dibujar(self.pantalla)
         else:
+            # Dibuja el laberinto de fondo incluso en la pantalla de Game Over
+            self.laberinto.dibujar(self.pantalla)
+
             # Mostrar mensaje de fin de juego
             fuente = pygame.font.Font(None, 74)
             texto = "¡GAME OVER!"

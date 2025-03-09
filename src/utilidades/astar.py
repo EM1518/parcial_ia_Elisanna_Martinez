@@ -82,6 +82,9 @@ class AEstrella:
         self.filas = ALTO_PANTALLA // tamano_celda
         self.columnas = ANCHO_PANTALLA // tamano_celda
         self.reiniciar_cuadricula()
+        self.obstaculos = []  # Lista para almacenar rectángulos de obstáculos
+        self.tiempo_ultima_busqueda = 0
+        self.ultima_ruta = []
 
     def reiniciar_cuadricula(self):
         # Reinicia la cuadrícula para un nuevo cálculo de ruta
@@ -90,19 +93,39 @@ class AEstrella:
             fila = [0] * self.columnas
             self.cuadricula.append(fila)
 
+    def actualizar_obstaculos(self, obstaculos):
+        """
+        Actualiza la lista de obstáculos y la cuadrícula de navegación
+        """
+        self.obstaculos = obstaculos
+        self.reiniciar_cuadricula()
+
+        # Marcar las celdas que contienen obstáculos
+        for obstaculo in self.obstaculos:
+            # Calcular las celdas que cubre el obstáculo
+            celda_x1 = max(0, obstaculo.x // self.tamano_celda)
+            celda_y1 = max(0, obstaculo.y // self.tamano_celda)
+            celda_x2 = min(self.columnas - 1, (obstaculo.x + obstaculo.width) // self.tamano_celda)
+            celda_y2 = min(self.filas - 1, (obstaculo.y + obstaculo.height) // self.tamano_celda)
+
+            # Marcar todas las celdas cubiertas por el obstáculo
+            for y in range(celda_y1, celda_y2 + 1):
+                for x in range(celda_x1, celda_x2 + 1):
+                    if 0 <= y < self.filas and 0 <= x < self.columnas:
+                        self.cuadricula[y][x] = 1  # 1 indica obstáculo
 
     def obtener_vecinos(self, nodo):
       # Obtiene los nodos vecinos válidos
         vecinos = []
         # 4 direcciones principales: arriba, derecha, abajo, izquierda
         direcciones = [(0, 1), (1, 0), (0, -1), (-1, 0)]
-        
+
         for dx, dy in direcciones:
             nuevo_x = nodo.x + dx
             nuevo_y = nodo.y + dy
 
-            if (0 <= nuevo_x < self.columnas and 
-                0 <= nuevo_y < self.filas and 
+            if (0 <= nuevo_x < self.columnas and
+                0 <= nuevo_y < self.filas and
                 self.cuadricula[nuevo_y][nuevo_x] == 0):
                 vecinos.append(Nodo(nuevo_x, nuevo_y))
         return vecinos
@@ -123,12 +146,41 @@ class AEstrella:
 
     def encontrar_ruta(self, inicio_x, inicio_y, objetivo_x, objetivo_y):
         """Encuentra una ruta usando el algoritmo A*"""
+
+        # Limitar la frecuencia de búsqueda (cada 5 frames)
+        self.tiempo_ultima_busqueda += 1
+        if self.tiempo_ultima_busqueda < 5 and self.ultima_ruta:
+            return self.ultima_ruta
+
+        self.tiempo_ultima_busqueda = 0
+
         # Convertir coordenadas de píxeles a coordenadas de cuadrícula
         inicio_x = inicio_x // self.tamano_celda
         inicio_y = inicio_y // self.tamano_celda
         objetivo_x = objetivo_x // self.tamano_celda
         objetivo_y = objetivo_y // self.tamano_celda
-    
+
+        # Asegurar que las coordenadas están dentro de los límites
+        inicio_x = max(0, min(inicio_x, self.columnas - 1))
+        inicio_y = max(0, min(inicio_y, self.filas - 1))
+        objetivo_x = max(0, min(objetivo_x, self.columnas - 1))
+        objetivo_y = max(0, min(objetivo_y, self.filas - 1))
+
+        # Si el objetivo está en un obstáculo, buscar la celda libre más cercana
+        if self.cuadricula[objetivo_y][objetivo_x] == 1:
+            mejor_distancia = float('inf')
+            mejor_x, mejor_y = objetivo_x, objetivo_y
+
+            # Buscar en un radio de 5 celdas
+            for y in range(max(0, objetivo_y - 5), min(self.filas, objetivo_y + 6)):
+                for x in range(max(0, objetivo_x - 5), min(self.columnas, objetivo_x + 6)):
+                    if self.cuadricula[y][x] == 0:
+                        distancia = abs(x - objetivo_x) + abs(y - objetivo_y)
+                        if distancia < mejor_distancia:
+                            mejor_distancia = distancia
+                            mejor_x, mejor_y = x, y
+
+            objetivo_x, objetivo_y = mejor_x, mejor_y
 
         # Crear nodos de inicio y objetivo
         inicio = Nodo(inicio_x, inicio_y)
@@ -143,9 +195,21 @@ class AEstrella:
         lista_abierta = ListaPrioridad()
         lista_abierta.push(inicio)
         lista_cerrada = []
+
+        # Limitar el número de iteraciones para evitar bucles infinitos
+        max_iteraciones = 200
+        iteraciones = 0
+
+        mejor_nodo = inicio  # Mejor nodo encontrado hasta ahora
+        mejor_distancia = inicio.h
         
-        while not lista_abierta.esta_vacia():
+        while not lista_abierta.esta_vacia() and iteraciones < max_iteraciones:
+            iteraciones += 1
             actual = lista_abierta.pop()
+
+            if actual.h < mejor_distancia:
+                mejor_nodo = actual
+                mejor_distancia = actual.h
 
             # Si llegamos al objetivo
             if actual == objetivo:
@@ -157,7 +221,8 @@ class AEstrella:
                         actual.y * self.tamano_celda + self.tamano_celda // 2
                     ))
                     actual = actual.padre
-                return ruta[::-1]  # Invertir la ruta
+                self.ultima_ruta = ruta[::-1]
+                return self.ultima_ruta
 
             lista_cerrada.append(actual)
 
@@ -182,7 +247,29 @@ class AEstrella:
                     nodo_existente.f = nuevo_g + nodo_existente.h
                     nodo_existente.padre = actual
 
-        return []  # No se encontró ruta
+        # Si no encontramos ruta, usar el mejor nodo encontrado
+        if mejor_nodo != inicio:
+            ruta = []
+            actual = mejor_nodo
+            while actual:
+                ruta.append((
+                    actual.x * self.tamano_celda + self.tamano_celda // 2,
+                    actual.y * self.tamano_celda + self.tamano_celda // 2
+                ))
+                actual = actual.padre
+
+            self.ultima_ruta = ruta[::-1]
+            return self.ultima_ruta
+
+        # Si no hay ruta posible, retornar una ruta directa
+        self.ultima_ruta = [(
+            inicio_x * self.tamano_celda + self.tamano_celda // 2,
+            inicio_y * self.tamano_celda + self.tamano_celda // 2
+        ), (
+            objetivo_x * self.tamano_celda + self.tamano_celda // 2,
+            objetivo_y * self.tamano_celda + self.tamano_celda // 2
+        )]
+        return self.ultima_ruta
 
     def actualizar_obstaculo(self, x, y, es_obstaculo):
         """Actualiza la cuadrícula con un obstáculo"""

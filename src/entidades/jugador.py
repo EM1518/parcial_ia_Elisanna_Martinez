@@ -15,15 +15,25 @@ class Jugador:
         self.balas = []
         self.tiempo_recarga = 0
         self.retraso_disparo = RETRASO_DISPARO_JUGADOR # Frames de delay
-    
+        self.color = VERDE
+        self.dx = 0
+        self.dy = 0
+
     def mover(self, dx, dy):
-        self.x += dx * self.velocidad
-        self.y += dy * self.velocidad
-        # Mantener al jugador dentro de los límites de la pantalla
-        self.x = max(0, min(self.x, ANCHO_PANTALLA - self.ancho))
-        self.y = max(0, min(self.y, ALTO_PANTALLA - self.alto))       
-        self.cuadrado.x = self.x
-        self.cuadrado.y = self.y
+        """
+        Guarda la dirección del movimiento para ser aplicada en actualizar()
+        """
+        self.dx = dx
+        self.dy = dy
+
+    def retroceder(self):
+        """
+        Retroceder a la última posición válida después de una colisión
+        """
+        self.x = self.ultima_x
+        self.y = self.ultima_y
+        self.rectangulo.x = round(self.x)
+        self.rectangulo.y = round(self.y)
 
     def disparar(self, direccion_x, direccion_y):
         if self.tiempo_recarga <= 0:
@@ -41,6 +51,33 @@ class Jugador:
             self.tiempo_recarga = self.retraso_disparo
 
     def actualizar(self):
+
+        """
+        Actualiza la posición y estado del jugador
+        """
+        # Guardar posición anterior para colisiones
+        self.ultima_x = self.x
+        self.ultima_y = self.y
+
+        # Calcular nueva posición basada en dx y dy
+        if self.dx != 0 or self.dy != 0:
+            # Normalizar el movimiento diagonal
+            if self.dx != 0 and self.dy != 0:
+                self.dx *= 0.7071  # 1/√2
+                self.dy *= 0.7071
+
+            # Aplicar velocidad
+            self.x += self.dx * self.velocidad
+            self.y += self.dy * self.velocidad
+
+            # Mantener dentro de los límites de la pantalla
+            self.x = max(0, min(self.x, ANCHO_PANTALLA - self.ancho))
+            self.y = max(0, min(self.y, ALTO_PANTALLA - self.alto))
+
+            # Actualizar el rectángulo de colisión
+            self.cuadrado.x = round(self.x)
+            self.cuadrado.y = round(self.y)
+
         # Actualizar cooldown de disparo
         if self.tiempo_recarga > 0:
             self.tiempo_recarga -= 1
@@ -52,7 +89,7 @@ class Jugador:
                 self.balas.remove(bala)
    
     def dibujar(self, surface):
-        pygame.draw.rect(surface, ROJO, self.cuadrado)
+        pygame.draw.rect(surface, self.color, self.cuadrado)
         # Dibujar balas
         for bala in self.balas:
             bala.dibujar(surface)

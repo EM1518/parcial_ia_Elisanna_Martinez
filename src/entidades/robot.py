@@ -13,7 +13,7 @@ class Robot:
         self.alto = ALTO_JUGADOR
         self.velocidad = 1 #mas lento que el jugador
         self.cuadrado = pygame.Rect(x, y, self.ancho, self.alto)
-        self.color = VERDE
+        self.color = AMARILLO
         self.balas = []
         self.tiempo_recarga = 0
         self.retraso_disparo = 120 # mas lento que el jugador
@@ -37,6 +37,23 @@ class Robot:
             (x, y + 75),  # Abajo
         ]
         self.punto_patrulla_actual = 0
+
+        # Configuración del árbol de comportamiento
+        self.configurar_arbol_comportamiento()
+
+    def configurar_arbol_comportamiento(self):
+        """
+        Configura el árbol de comportamiento del robot
+        """
+        # Crea los nodos de comportamiento
+        jugador_en_rango = JugadorEnRango(250)  # Detecta al jugador en un rango de 200 píxeles
+        perseguir = Perseguir()  # El robot persigue al jugador
+        secuencia_perseguir = Secuencia([jugador_en_rango, perseguir])  # Secuencia: primero detectar, luego perseguir
+
+        patrullar = Patrullar()  # El robot patrulla si no detecta al jugador
+
+        # Selector principal: perseguir si el jugador está en rango, si no, patrullar
+        self.arbol_comportamiento = Selector([secuencia_perseguir, patrullar])
 
     def mantener_distancia_robots(self, otros_robots):
         # Vector resultante de separación
@@ -69,12 +86,13 @@ class Robot:
 
             # Guardar la ruta para visualización
             self.ruta_actual = nueva_ruta
-
             # Calcular la dirección basada en el primer punto de la nueva ruta
             siguiente_punto = nueva_ruta[1]  # Usar el segundo punto para evitar giros bruscos
+
             dx = siguiente_punto[0] - self.x
             dy = siguiente_punto[1] - self.y      
             distancia = math.sqrt(dx * dx + dy * dy)
+
             if distancia != 0:
                 self.direccion_actual_x = dx / distancia
                 self.direccion_actual_y = dy / distancia
@@ -223,13 +241,21 @@ class Robot:
             self.estado_actual = "patrulla"
             self.mover_en_patrulla(otros_robots)
         else:
-            # Si el jugador salió de la zona, los robots siempre lo persiguen
-            self.estado_actual = "persecución"
-            self.mover_hacia_jugador(jugador_x, jugador_y, otros_robots)
-            # Disparar cuando la distancia sea menor a 250 (aumentado el rango)
-            if distancia_jugador <= 500 and self.puede_disparar:
-                self.disparar_a_jugador(jugador_x, jugador_y)
- 
+            # Ejecuta el árbol de comportamiento para determinar el comportamiento del robot
+          #  resultado = self.arbol_comportamiento.ejecutar(self, jugador_x, jugador_y, otros_robots)
+
+            # Si estamos en modo persecución y el jugador está cerca, disparamos
+            if distancia_jugador <= 250:
+                self.estado_actual = "persecución"
+                self.mover_hacia_jugador(jugador_x, jugador_y, otros_robots)
+                # Si está suficientemente cerca, disparar
+                if distancia_jugador <= 200 and self.puede_disparar:
+                    self.disparar_a_jugador(jugador_x, jugador_y)
+            else:
+                # Si no está en rango, patrullar
+                self.estado_actual = "patrulla"
+                self.mover_en_patrulla(otros_robots)
+
         # Actualizar balas
         for bala in self.balas[:]:
             bala.actualizar()
@@ -243,12 +269,13 @@ class Robot:
             for i, punto in enumerate(self.puntos_patrulla):
                 # Dibujar punto
                 pygame.draw.circle(surface, (255, 0, 0), (int(punto[0]), int(punto[1])), 3)
+
                 # Dibujar línea al siguiente punto
                 siguiente = self.puntos_patrulla[(i + 1) % len(self.puntos_patrulla)]
                 pygame.draw.line(surface, (255, 0, 0), punto, siguiente, 1)
 
         # Dibujar la ruta (para depuración)
-        if self.ruta_actual:
+        if self.ruta_actual and self.estado_actual == "persecución":
             for i in range(len(self.ruta_actual) - 1):
                 pygame.draw.line(surface, (255, 0, 0), 
                                self.ruta_actual[i], 
