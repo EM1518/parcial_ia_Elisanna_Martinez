@@ -4,16 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="25efbc73-c38a-4b70-864f-5bef63894b06" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/parcial_ia_Elisanna_Martinez.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/parcial_ia_Elisanna_Martinez.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/constantes.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/constantes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/entidades/jugador.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/entidades/jugador.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/entidades/robot.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/entidades/robot.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/juego.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/juego.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utilidades/arbol_comportamiento.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utilidades/arbol_comportamiento.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utilidades/astar.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utilidades/astar.py" afterDir="false" />
-    </list>
+    <list default="true" id="25efbc73-c38a-4b70-864f-5bef63894b06" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -22,18 +13,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "EM1518"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;EM1518&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/EM1518/parcial_ia_Elisanna_Martinez.git",
-    "accountId": "fae18d5e-bafc-4260-be93-1aae19a78f12"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/EM1518/parcial_ia_Elisanna_Martinez.git&quot;,
+    &quot;accountId&quot;: &quot;fae18d5e-bafc-4260-be93-1aae19a78f12&quot;
   }
-}]]></component>
+}</component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 5
 }</component>
@@ -44,6 +35,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Python.laberinto.executor": "Run",
     "Python.main.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
