@@ -151,10 +151,10 @@ class Laberinto:
         self.paredes.append(Pared(600, 400, grosor, 100))
 
         # Obstáculos adicionales
-        self.paredes.append(Pared(300, 150, grosor, 50))
-        self.paredes.append(Pared(500, 350, grosor, 50))
+       # self.paredes.append(Pared(300, 150, grosor, 50))
+       # self.paredes.append(Pared(500, 350, grosor, 50))
         self.paredes.append(Pared(300, 450, 50, grosor))
-        self.paredes.append(Pared(450, 250, 50, grosor))
+       # self.paredes.append(Pared(450, 250, 50, grosor))
 
     def cambiar_nivel(self, nivel):
         """

@@ -253,6 +253,9 @@ class Juego:
         # Cargar sonidos
         self.cargar_sonidos()
 
+        # Cargar imágenes
+        self.cargar_imagenes()
+
         # Crear menú
         self.menu = Menu(self.pantalla)
         self.estado_juego = "menu"  # menu, jugando, pausa
@@ -260,29 +263,63 @@ class Juego:
         # Estado del juego
         self.reiniciar_juego()
 
+        # Sistema de vidas
+        self.vidas = 3
+        self.tiempo_invulnerabilidad = 0
+        self.invulnerable = False
+
+    def cargar_imagenes(self):
+        self.imagenes = {}
+        try:
+            # Crear directorio de imágenes si no existe
+            os.makedirs('src/assets/imagenes', exist_ok=True)
+
+            # Crear imagen para la vida (corazón simple)
+            tamano_vida = 25
+            superficie_vida = pygame.Surface((tamano_vida, tamano_vida), pygame.SRCALPHA)
+            pygame.draw.polygon(superficie_vida, ROJO, [
+                (tamano_vida // 2, tamano_vida // 5),
+                (tamano_vida - tamano_vida // 5, tamano_vida // 2),
+                (tamano_vida // 2, tamano_vida - tamano_vida // 5),
+                (tamano_vida // 5, tamano_vida // 2)
+            ])
+            self.imagenes['vida'] = superficie_vida
+        except Exception as e:
+            print(f"Error al cargar imágenes: {e}")
+
     def cargar_sonidos(self):
-        # Asegúrate de que existe la carpeta de sonidos
         self.sonidos = {}
         try:
-            # Sonidos del juego
-            self.sonidos['disparo_jugador'] = pygame.mixer.Sound('src/assets/sonidos/disparo_jugador.wav')
-            self.sonidos['disparo_robot'] = pygame.mixer.Sound('src/assets/sonidos/disparo_robot.wav')
-            self.sonidos['explosion'] = pygame.mixer.Sound('src/assets/sonidos/explosion.wav')
-            self.sonidos['nivel_completado'] = pygame.mixer.Sound('src/assets/sonidos/nivel_completado.wav')
-            self.sonidos['game_over'] = pygame.mixer.Sound('src/assets/sonidos/game_over.wav')
+            # Asegurarse de que existe el directorio
+            os.makedirs('src/assets/sonidos', exist_ok=True)
 
-            # Ajustar volumen
-            for sonido in self.sonidos.values():
-                sonido.set_volume(0.3)
+            # Intentar cargar sonidos si existen
+            archivos_sonido = {
+                'disparo_jugador': 'src/assets/sonidos/disparo_jugador.wav',
+                'disparo_robot': 'src/assets/sonidos/disparo_robot.wav',
+                'explosion': 'src/assets/sonidos/explosion.wav',
+                'nivel_completado': 'src/assets/sonidos/nivel_completado.wav',
+                'game_over': 'src/assets/sonidos/game_over.wav',
+                'daño': 'src/assets/sonidos/dano.wav'
+            }
 
             # Música de fondo
-            pygame.mixer.music.load('src/assets/sonidos/musica_fondo.mp3')
-            pygame.mixer.music.set_volume(0.2)
-            pygame.mixer.music.play(-1)  # -1 para repetir infinitamente
+            archivo_musica = 'src/assets/sonidos/musica_fondo.mp3'
+
+            # Cargar sonidos disponibles
+            for nombre, ruta in archivos_sonido.items():
+                if os.path.exists(ruta):
+                    self.sonidos[nombre] = pygame.mixer.Sound(ruta)
+                    self.sonidos[nombre].set_volume(0.3)
+
+            # Cargar música si existe
+            if os.path.exists(archivo_musica):
+                pygame.mixer.music.load(archivo_musica)
+                pygame.mixer.music.set_volume(0.2)
+                pygame.mixer.music.play(-1)  # -1 para repetir infinitamente
+
         except Exception as e:
             print(f"Error al cargar sonidos: {e}")
-            # Crear directorio de sonidos si no existe
-            os.makedirs('src/assets/sonidos', exist_ok=True)
 
     def reproducir_sonido(self, nombre_sonido):
         if nombre_sonido in self.sonidos:
@@ -298,13 +335,23 @@ class Juego:
 
         #crear robots
         self.robots = []
-        self.crear_robot(3 + self.nivel_actual)
+        robots_por_nivel = {
+            1: 5,  # Nivel 1: 5 robots
+            2: 8,  # Nivel 2: 8 robots
+            3: 12  # Nivel 3: 12 robots
+        }
+        self.crear_robots(robots_por_nivel.get(self.nivel_actual, 5))
 
         # Estado de juego
         self.jugando = True
         self.victoria = False
         self.jugador_salio = False  # controlar si el jugador ya salió del cuadro seguro
         self.pasando_nivel = False  # controlar la transición entre niveles
+
+        # Resetear estado de invulnerabilidad
+        self.invulnerable = False
+        self.tiempo_invulnerabilidad = 0
+
 
     def calcular_posicion_segura_jugador(self):
         """
@@ -363,87 +410,269 @@ class Juego:
 
         return jugador_x, jugador_y
 
-    def crear_robot(self, cantidad):
-        # Posiciones adaptadas según el nivel
-        posiciones = []
+    def crear_robots(self, cantidad):
+        # Definir la cantidad de robots por nivel
+        robots_por_nivel = {
+            1: 6,
+            2: 8,
+            3: 10
+        }
+        cantidad_objetivo = robots_por_nivel.get(self.nivel_actual, 6)
 
-        # Diferentes patrones de posición según el nivel
-        if self.nivel_actual == 1:
-            posiciones = [
-                (600, 80),  # Arriba derecha
-                (700, 80),  # Arriba derecha
-                (500, 300),  # Centro derecha
-                (600, 300),  # Centro derecha
+        # Posiciones específicas y rutas de patrulla para cada nivel
+        robots_predefinidos = {
+            1: [
+                # [posición_x, posición_y, [punto_patrulla_1_x, punto_patrulla_1_y, punto_patrulla_2_x, punto_patrulla_2_y]]
+                [600, 80, 650, 80, 700, 80],  # Robot 1: superior derecha
+                [600, 150, 600, 200, 650, 150],  # Robot 2: medio derecha superior
+                [600, 300, 650, 300, 700, 300],  # Robot 3: medio derecha
+                [600, 500, 700, 500, 650, 450],  # Robot 4: inferior derecha
+                [200, 100, 250, 100, 200, 150],  # Robot 5: superior izquierda
+                [200, 300, 150, 300, 250, 300],  # Robot 6: medio izquierda
+                # Posiciones extra por si algunas no son válidas
+                [400, 100, 450, 100, 400, 150],  # Extra 1
+                [400, 300, 450, 300, 400, 350],  # Extra 2
+                [400, 500, 450, 500, 400, 450]  # Extra 3
+            ],
+            2: [
+                [600, 80, 700, 80, 650, 120],  # Robot 1: superior derecha
+                [600, 180, 650, 180, 700, 180],  # Robot 2: superior media derecha
+                [600, 280, 650, 280, 700, 280],  # Robot 3: medio derecha
+                [600, 380, 650, 380, 700, 380],  # Robot 4: medio inferior derecha
+                [600, 520, 650, 520, 700, 520],  # Robot 5: inferior derecha
+                [150, 80, 200, 80, 150, 120],  # Robot 6: superior izquierda
+                [150, 280, 200, 280, 150, 320],  # Robot 7: medio izquierda
+                [350, 480, 400, 480, 350, 520]  # Robot 8: centro-inferior
+            ],
+            3: [
+                [150, 50, 200, 50, 150, 100],  # Robot 1: superior izquierda
+                [400, 50, 450, 50, 500, 50],  # Robot 2: superior central
+                [650, 50, 700, 50, 650, 100],  # Robot 3: superior derecha
+                [750, 150, 700, 150, 750, 200],  # Robot 4: derecha superior
+                [100, 350, 150, 350, 100, 400],  # Robot 5: izquierda media
+                [550, 230, 600, 230, 650, 230],  # Robot 6
+                [650, 530, 700, 530, 680, 580],  # Robot 7
+                [150, 600, 200, 600, 150, 650],  # Robot 8: izquierda inferior
+                [500, 600, 550, 600, 500, 650],  # Robot 9: área inferior
+                [350, 600, 400, 600, 380, 650],  # Robot 10: área inferior izquierda
+                # Posiciones extra
+                [300, 50, 350, 50, 300, 100],  # Extra 1
+                [450, 350, 500, 350, 450, 400],  # Extra 2
+                [250, 500, 300, 500, 250, 550],  # Extra 3
+                [400, 200, 450, 200, 400, 250]  # Extra 4
             ]
-        elif self.nivel_actual == 2:
-            posiciones = [
-                (600, 50),  # Arriba derecha
-                (700, 120),  # Arriba derecha
-                (500, 250),  # Centro derecha
-                (600, 350),  # Centro derecha
-                (500, 450),  # Abajo derecha
-                (700, 500),  # Abajo derecha
-            ]
-        elif self.nivel_actual == 3:
-            posiciones = [
-                (600, 40),  # Arriba derecha
-                (700, 120),  # Arriba derecha
-                (500, 250),  # Centro derecha
-                (600, 350),  # Centro derecha
-                (500, 450),  # Abajo derecha
-                (700, 500),  # Abajo derecha
-                (300, 250),  # Centro
-                (400, 450),  # Centro
-            ]
+        }
 
-        # Limitar la cantidad de robots según las posiciones disponibles
-        cantidad = min(cantidad, len(posiciones))
+        # Velocidad base de los robots, aumenta con el nivel
+        velocidad_base = VELOCIDAD_ROBOT
+        velocidad_por_nivel = {
+            1: velocidad_base,
+            2: velocidad_base * 1.3,  # 30% más rápido en nivel 2
+            3: velocidad_base * 1.6  # 60% más rápido en nivel 3
+        }
+        velocidad_robot = velocidad_por_nivel.get(self.nivel_actual, velocidad_base)
 
-        for i in range(cantidad):
-            x, y = posiciones[i]
+        # Limpiar la lista de robots
+        self.robots = []
+
+        # Obtener las posiciones predefinidas para este nivel
+        robots_nivel = robots_predefinidos.get(self.nivel_actual, [])
+
+        # Si no hay definiciones para este nivel, usar un conjunto predeterminado
+        if not robots_nivel:
+            robots_nivel = robots_predefinidos.get(1, [])
+
+        # Contador de robots creados
+        robots_creados = 0
+
+        # Intentar crear robots con todas las definiciones disponibles
+        for pos_robot in robots_nivel:
+            # Si ya tenemos suficientes robots, salir
+            if robots_creados >= cantidad_objetivo:
+                break
+
+            x, y = pos_robot[0], pos_robot[1]  # Posición del robot
 
             # Verificar que la posición no esté sobre una pared
-            temp_rect = pygame.Rect(x, y, ANCHO_JUGADOR, ALTO_JUGADOR)
+            temp_rect = pygame.Rect(x - ANCHO_JUGADOR / 2, y - ALTO_JUGADOR / 2,
+                                    ANCHO_JUGADOR, ALTO_JUGADOR)
+
             if self.laberinto.verificar_colision(temp_rect):
-                # Buscar una posición cercana que no colisione
-                posicion_valida = False
-                for dx in range(-50, 51, 10):
-                    for dy in range(-50, 51, 10):
-                        nueva_x = x + dx
-                        nueva_y = y + dy
-                        if 0 <= nueva_x < ANCHO_PANTALLA - ANCHO_JUGADOR and 0 <= nueva_y < ALTO_PANTALLA - ALTO_JUGADOR:
-                            temp_rect = pygame.Rect(nueva_x, nueva_y, ANCHO_JUGADOR, ALTO_JUGADOR)
-                            if not self.laberinto.verificar_colision(temp_rect):
-                                x, y = nueva_x, nueva_y
-                                posicion_valida = True
-                                break
-                    if posicion_valida:
+                continue  # Saltar este robot si está sobre una pared
+
+            # Crear robot en la posición
+            nuevo_robot = Robot(x, y)
+
+            # Ajustar velocidad del robot según el nivel
+            nuevo_robot.velocidad = velocidad_robot
+
+            # Asignar puntos de patrulla específicos
+            puntos_patrulla = []
+            if len(pos_robot) >= 6:  # Si hay puntos de patrulla definidos
+                # Posición inicial
+                puntos_patrulla.append((x, y))
+
+                # Punto de patrulla 1
+                px1, py1 = pos_robot[2], pos_robot[3]
+                puntos_patrulla.append((px1, py1))
+
+                # Punto de patrulla 2
+                px2, py2 = pos_robot[4], pos_robot[5]
+                puntos_patrulla.append((px2, py2))
+            else:
+                # Si no hay puntos definidos, usar la posición actual
+                puntos_patrulla = [(x, y), (x + 20, y), (x, y + 20)]
+
+            # Verificar que los puntos de patrulla sean accesibles
+            puntos_validos = []
+            for px, py in puntos_patrulla:
+                temp_rect = pygame.Rect(px - ANCHO_JUGADOR / 2, py - ALTO_JUGADOR / 2,
+                                        ANCHO_JUGADOR, ALTO_JUGADOR)
+                if not self.laberinto.verificar_colision(temp_rect):
+                    # Verificar camino libre si no es el primer punto
+                    if len(puntos_validos) == 0 or self.verificar_camino_libre(puntos_validos[-1][0],
+                                                                               puntos_validos[-1][1], px, py):
+                        puntos_validos.append((px, py))
+
+            # Si no hay suficientes puntos válidos, añadir la posición actual
+            if len(puntos_validos) < 2:
+                puntos_validos = [(x, y), (x + 10, y)]
+
+            nuevo_robot.puntos_patrulla = puntos_validos
+            nuevo_robot.punto_patrulla_actual = 0
+
+            # Añadir el robot a la lista
+            self.robots.append(nuevo_robot)
+            robots_creados += 1
+
+        # Si no tenemos suficientes robots, crear más en posiciones seguras
+        if robots_creados < cantidad_objetivo:
+            # Definir zonas seguras para robots adicionales
+            zonas_seguras = {
+                1: [
+                    (300, 100, 350, 150),
+                    (300, 300, 350, 350),
+                    (300, 500, 350, 550)
+                ],
+                2: [
+                    (300, 100, 350, 150),
+                    (300, 300, 350, 350),
+                    (300, 500, 350, 550)
+                ],
+                3: [
+                    (300, 100, 350, 150),
+                    (300, 300, 350, 350),
+                    (300, 500, 350, 550),
+                    (550, 250, 600, 300),
+                    (450, 400, 500, 450)
+                ]
+            }
+
+            zonas = zonas_seguras.get(self.nivel_actual, [])
+
+            # Crear robots adicionales
+            for i in range(cantidad_objetivo - robots_creados):
+                if not zonas:
+                    break
+
+                zona = zonas[i % len(zonas)]
+                x = (zona[0] + zona[2]) // 2
+                y = (zona[1] + zona[3]) // 2
+
+                nuevo_robot = Robot(x, y)
+                nuevo_robot.velocidad = velocidad_robot
+
+                # Puntos de patrulla simples
+                puntos = [(x, y), (x + 30, y), (x, y + 30)]
+                nuevo_robot.puntos_patrulla = puntos
+                nuevo_robot.punto_patrulla_actual = 0
+
+                self.robots.append(nuevo_robot)
+                robots_creados += 1
+
+        print(f"Creados {len(self.robots)} robots en el nivel {self.nivel_actual}")
+
+    def crear_puntos_patrulla_en_zona(self, robot, zona):
+        """Crea puntos de patrulla para el robot dentro de una zona específica"""
+        x_min, y_min, x_max, y_max = zona
+
+        # Posición actual del robot
+        puntos = [(robot.x, robot.y)]
+
+        # Intentar añadir solo 1 punto adicional pero bien verificado
+        intentos = 0
+        max_intentos = 20
+
+        while len(puntos) < 2 and intentos < max_intentos:
+            intentos += 1
+
+            # Generar punto aleatorio dentro de la zona
+            x = random.randint(x_min + 15, x_max - 15)  # Margen para evitar paredes
+            y = random.randint(y_min + 15, y_max - 15)  # Margen para evitar paredes
+
+            # Verificar que no esté sobre una pared
+            temp_rect = pygame.Rect(x - ANCHO_JUGADOR / 2, y - ALTO_JUGADOR / 2,
+                                    ANCHO_JUGADOR, ALTO_JUGADOR)
+
+            if not self.laberinto.verificar_colision(temp_rect):
+                # Verificar con más precisión que hay un camino libre
+                if self.verificar_camino_libre(robot.x, robot.y, x, y):
+                    puntos.append((x, y))
+
+        # Si no pudimos añadir un punto, usar uno muy cercano al robot
+        if len(puntos) < 2:
+            # Buscar en círculos concéntricos muy pequeños
+            for distancia in [10, 15, 20]:
+                encontrado = False
+                for angulo in range(0, 360, 45):
+                    rad = math.radians(angulo)
+                    nx = robot.x + math.cos(rad) * distancia
+                    ny = robot.y + math.sin(rad) * distancia
+
+                    temp_rect = pygame.Rect(nx - ANCHO_JUGADOR / 2, ny - ALTO_JUGADOR / 2,
+                                            ANCHO_JUGADOR, ALTO_JUGADOR)
+
+                    if not self.laberinto.verificar_colision(temp_rect):
+                        puntos.append((nx, ny))
+                        encontrado = True
                         break
 
-                # Si no se encontró posición válida, saltar este robot
-                if not posicion_valida:
-                    continue
+                if encontrado:
+                    break
 
-            # Crear robot en la posición válida
-            nuevo_robot = Robot(x, y)
-            # Crear puntos de patrulla simples: posición actual y un punto cercano en una dirección aleatoria
-            direccion = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])
-            dx, dy = direccion
+            # Si aún no hay puntos, usar una variación mínima
+            if len(puntos) < 2:
+                puntos.append((robot.x + 5, robot.y + 5))
 
-            # Punto alternativo a corta distancia
-            alt_x = x + dx * 40
-            alt_y = y + dy * 40
+        robot.puntos_patrulla = puntos
+        robot.punto_patrulla_actual = 0
 
-            # Verificar que el punto alternativo no colisione con paredes
-            alt_rect = pygame.Rect(alt_x, alt_y, ANCHO_JUGADOR, ALTO_JUGADOR)
-            if not self.laberinto.verificar_colision(alt_rect):
-                nuevo_robot.puntos_patrulla = [(x, y), (alt_x, alt_y)]
-            else:
-                # Si colisiona, usar solo la posición actual duplicada (permanecerá casi inmóvil)
-                nuevo_robot.puntos_patrulla = [(x, y), (x + 5, y + 5)]
+    def verificar_camino_libre(self, x1, y1, x2, y2):
+        """Verifica si hay un camino libre entre dos puntos"""
+        # Calcular la distancia entre los puntos
+        distancia = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
-            nuevo_robot.punto_patrulla_actual = 0
-            self.robots.append(nuevo_robot)
+        # Más puntos para distancias mayores
+        num_pasos = max(10, int(distancia / 10))
+
+        # Verificar varios puntos a lo largo de la ruta
+        for i in range(num_pasos + 1):
+            t = i / num_pasos
+            x = x1 + (x2 - x1) * t
+            y = y1 + (y2 - y1) * t
+
+            # Crear un cuadrado ligeramente más grande para verificar colisiones
+            # (margen de seguridad para evitar que el robot se acerque demasiado a las paredes)
+            margen = 5  # Margen de seguridad
+            ancho_check = ANCHO_JUGADOR + margen * 2
+            alto_check = ALTO_JUGADOR + margen * 2
+
+            rect_check = pygame.Rect(x - ancho_check / 2, y - alto_check / 2, ancho_check, alto_check)
+
+            if self.laberinto.verificar_colision(rect_check):
+                return False  # Hay un obstáculo en el camino
+
+        return True  # No hay obstáculos en el camino
 
     def verificar_colisiones_robots(self):
         # Para cada robot, verificar colisión con otros robots
@@ -486,33 +715,22 @@ class Juego:
                 self.robots.remove(robot)  # Eliminar robot si es golpeado
 
         # Verificar colisiones entre balas de robots y jugador
-        for robot in self.robots:
-            if detectar_colision_balas_entidad(robot.balas, self.jugador):
-                self.reproducir_sonido('game_over')
-                self.jugando = False  # El jugador pierde si es golpeado
-                self.victoria = False
-                self.menu.estado_menu = "game_over"
-                self.estado_juego = "menu"
-                return
+        if not self.invulnerable:
+            for robot in self.robots:
+                if detectar_colision_balas_entidad(robot.balas, self.jugador):
+                    self.perder_vida()
+                    return
 
         # Verificar colisiones directas entre jugador y robots
-        for robot in self.robots:
-            if detectar_colision_entidades(self.jugador, robot):
-                self.reproducir_sonido('game_over')
-                self.jugando = False
-                self.victoria = False
-                self.menu.estado_menu = "game_over"
-                self.estado_juego = "menu"
-                return
+        if not self.invulnerable:
+            for robot in self.robots:
+                if detectar_colision_entidades(self.jugador, robot):
+                    self.perder_vida()
+                    return
 
         # Verificar colisiones entre jugador y paredes
         if self.laberinto.verificar_colision(self.jugador.cuadrado):
-            self.reproducir_sonido('game_over')
-            # Si el jugador colisiona con una pared pierde
-            self.jugando = False
-            self.victoria = False
-            self.menu.estado_menu = "game_over"
-            self.estado_juego = "menu"
+            self.perder_vida()
             return
 
         # Verificar si el jugador llega a la zona de salida
@@ -544,7 +762,32 @@ class Juego:
         if len(self.robots) == 0 and not self.pasando_nivel:
             # No finaliza el juego, solo muestra que hay que llegar a la salida
             pass
-    
+
+    def perder_vida(self):
+        """Gestiona la pérdida de una vida del jugador"""
+        if not self.invulnerable:
+            self.reproducir_sonido('daño')
+          #  self.vidas -= 1
+
+            if self.vidas <= 0:
+                # Game over
+                self.reproducir_sonido('game_over')
+                self.jugando = False
+                self.victoria = False
+                self.menu.estado_menu = "game_over"
+                self.estado_juego = "menu"
+            else:
+                # Periodo de invulnerabilidad
+                self.invulnerable = True
+                self.tiempo_invulnerabilidad = 120  # 2 segundos a 60 FPS
+
+                # Reposicionar al jugador en un lugar seguro
+                x, y = self.calcular_posicion_segura_jugador()
+                self.jugador.x = x
+                self.jugador.y = y
+                self.jugador.cuadrado.x = x
+                self.jugador.cuadrado.y = y
+
     def manejar_eventos(self):
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
@@ -555,12 +798,16 @@ class Juego:
                 accion = self.menu.manejar_eventos(evento)
                 if accion == "jugar":
                     self.estado_juego = "jugando"
+                    self.nivel_actual = 1
+                    self.vidas = 3
+                    self.laberinto.cambiar_nivel(self.nivel_actual)
                     self.reiniciar_juego()
                 elif accion == "salir":
                     self.ejecutando = False
                 elif accion == "reiniciar":
                     self.estado_juego = "jugando"
                     self.nivel_actual = 1
+                    self.vidas = 3
                     self.laberinto.cambiar_nivel(self.nivel_actual)
                     self.reiniciar_juego()
                 elif accion == "menu":
@@ -580,6 +827,7 @@ class Juego:
                     self.estado_juego = "jugando"
                 elif accion == "reiniciar":
                     self.estado_juego = "jugando"
+                    self.vidas = 3
                     self.reiniciar_juego()
                 elif accion == "menu":
                     self.menu.estado_menu = "principal"
@@ -622,14 +870,16 @@ class Juego:
 
         self.jugador.actualizar(self.laberinto)
 
+        # Actualizar estado de invulnerabilidad
+        if self.invulnerable:
+            self.tiempo_invulnerabilidad -= 1
+            if self.tiempo_invulnerabilidad <= 0:
+                self.invulnerable = False
+
         # Verificar colisiones del jugador con las paredes después de actualizar
         if self.laberinto.verificar_colision(self.jugador.cuadrado):
-            # Si hay colisión, pierde inmediatamente
-            self.reproducir_sonido('game_over')
-            self.jugando = False
-            self.victoria = False
-            self.menu.estado_menu = "game_over"
-            self.estado_juego = "menu"
+            # Si hay colisión, pierde una vida
+            self.perder_vida()
             return
 
         # Verificar si el jugador sale de la zona por primera vez
@@ -672,19 +922,25 @@ class Juego:
     def dibujar(self):
         self.pantalla.fill(NEGRO)
 
-        # Dibujamos el laberinto
+        # Dibuja el laberinto como fondo
         self.laberinto.dibujar(self.pantalla)
 
         if self.estado_juego == "jugando" or self.estado_juego == "pausa":
 
-            # Dibujamos la zona de salida (verde claro)
+            # Dibuja la zona de salida (verde claro)
             if len(self.robots) == 0:
                 pygame.draw.rect(self.pantalla, (100, 255, 100), self.zona_salida)
 
             # Solo dibujar la zona de inicio si el jugador no ha salido
             if not self.jugador_salio:
                 pygame.draw.rect(self.pantalla, (50, 50, 50), self.zona_inicio, 2)
-            self.jugador.dibujar(self.pantalla)
+
+            # Dibujar jugador con efecto de parpadeo si es invulnerable
+            if self.invulnerable:
+                if self.tiempo_invulnerabilidad % 10 < 5:  # Parpadeo
+                    self.jugador.dibujar(self.pantalla)
+            else:
+                self.jugador.dibujar(self.pantalla)
 
             # Dibujar robots
             for robot in self.robots:
@@ -700,6 +956,10 @@ class Juego:
             texto_robots = f"Robots: {len(self.robots)}"
             superficie_robots = fuente.render(texto_robots, True, BLANCO)
             self.pantalla.blit(superficie_robots, (10, 50))
+
+            # Mostrar vidas
+            for i in range(self.vidas):
+                self.pantalla.blit(self.imagenes['vida'], (ANCHO_PANTALLA - 40 - i * 30, 10))
 
             # Mostrar indicaciones si todos los robots están eliminados
             if len(self.robots) == 0:

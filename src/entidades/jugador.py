@@ -12,7 +12,7 @@ class Jugador:
         self.ultima_y = y
         self.ancho = ANCHO_JUGADOR
         self.alto = ALTO_JUGADOR
-        self.velocidad = 5
+        self.velocidad = VELOCIDAD_JUGADOR
         self.cuadrado = pygame.Rect(x, y, self.ancho, self.alto)
         self.balas = []
         self.tiempo_recarga = 0
@@ -41,8 +41,11 @@ class Jugador:
         if self.tiempo_recarga <= 0:
             bala_x = self.x + self.ancho // 2 - ANCHO_BALA // 2
             bala_y = self.y + self.alto // 2 - ALTO_BALA // 2
-    
-            self.balas.append(Bala(bala_x, bala_y, dx, dy))
+
+            nueva_bala = Bala(bala_x, bala_y, dx, dy)
+            nueva_bala.velocidad = VELOCIDAD_BALA  # Usar la constante para la velocidad de la bala
+
+            self.balas.append(nueva_bala)
             self.tiempo_recarga = self.retraso_disparo
 
     def actualizar(self, laberinto=None):
