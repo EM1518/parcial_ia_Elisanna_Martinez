@@ -112,31 +112,96 @@ class Robot:
                 if magnitud != 0:
                     self.direccion_actual_x /= magnitud
                     self.direccion_actual_y /= magnitud
+        else:
+            # Si no hay ruta disponible, intentar rodear obstáculos
+            self.rodear_obstaculos(jugador_x, jugador_y, laberinto)
+            return
 
-            # Aplicar el movimiento
-            nueva_x = self.x + self.direccion_actual_x * self.velocidad
-            nueva_y = self.y + self.direccion_actual_y * self.velocidad
-            
-            # Mantener dentro de los límites
-            nueva_x = max(0, min(nueva_x, ANCHO_PANTALLA - self.ancho))
-            nueva_y = max(0, min(nueva_y, ALTO_PANTALLA - self.alto))
+        # Aplicar el movimiento
+        nueva_x = self.x + self.direccion_actual_x * self.velocidad
+        nueva_y = self.y + self.direccion_actual_y * self.velocidad
 
-            # Guardar posición anterior
-            x_anterior = self.x
-            y_anterior = self.y
+        # Mantener dentro de los límites
+        nueva_x = max(0, min(nueva_x, ANCHO_PANTALLA - self.ancho))
+        nueva_y = max(0, min(nueva_y, ALTO_PANTALLA - self.alto))
 
-            self.x = nueva_x
-            self.y = nueva_y
+        # Guardar posición anterior
+        x_anterior = self.x
+        y_anterior = self.y
+
+        self.x = nueva_x
+        self.y = nueva_y
+        self.cuadrado.x = self.x
+        self.cuadrado.y = self.y
+
+        # Verificar colisión con paredes
+        if laberinto and laberinto.verificar_colision(self.cuadrado):
+            # Si colisiona, volver a la posición anterior
+            self.x = x_anterior
+            self.y = y_anterior
             self.cuadrado.x = self.x
             self.cuadrado.y = self.y
 
-            # Verificar colisión con paredes
-            if laberinto and laberinto.verificar_colision(self.cuadrado):
-                # Si colisiona, volver a la posición anterior
-                self.x = x_anterior
-                self.y = y_anterior
+            # Intentar rodear obstáculos
+            self.rodear_obstaculos(jugador_x, jugador_y, laberinto)
+
+    def rodear_obstaculos(self, jugador_x, jugador_y, laberinto):
+        """Intenta encontrar una ruta alternativa alrededor de obstáculos"""
+        if not laberinto:
+            return
+
+        # Dirección hacia el jugador
+        dx = jugador_x - self.x
+        dy = jugador_y - self.y
+        distancia = math.sqrt(dx * dx + dy * dy)
+
+        if distancia != 0:
+            dx /= distancia
+            dy /= distancia
+
+        # Intentar 8 direcciones posibles
+        direcciones = [
+            (1, 0), (1, 1), (0, 1), (-1, 1),
+            (-1, 0), (-1, -1), (0, -1), (1, -1)
+        ]
+
+        # Ordenar direcciones según su alineación con la dirección al jugador
+        # (para priorizar direcciones que vayan hacia el jugador)
+        direcciones.sort(key=lambda d: (d[0] * dx + d[1] * dy), reverse=True)
+
+        for dir_x, dir_y in direcciones:
+            # Normalizar para que la diagonal no sea más rápida
+            if dir_x != 0 and dir_y != 0:
+                dir_x *= 0.7071  # cos(45°)
+                dir_y *= 0.7071  # sin(45°)
+
+            # Verificar si podemos movernos en esta dirección
+            nueva_x = self.x + dir_x * self.velocidad * 2  # Mirar un poco más adelante
+            nueva_y = self.y + dir_y * self.velocidad * 2
+
+            temp_rect = pygame.Rect(nueva_x, nueva_y, self.ancho, self.alto)
+
+            if not laberinto.verificar_colision(temp_rect):
+                # Esta dirección es válida, intentar moverse
+                self.x += dir_x * self.velocidad
+                self.y += dir_y * self.velocidad
+
+                # Mantener dentro de los límites
+                self.x = max(0, min(self.x, ANCHO_PANTALLA - self.ancho))
+                self.y = max(0, min(self.y, ALTO_PANTALLA - self.alto))
+
                 self.cuadrado.x = self.x
                 self.cuadrado.y = self.y
+
+                # Si todavía colisiona, revertir
+                if laberinto.verificar_colision(self.cuadrado):
+                    self.x -= dir_x * self.velocidad
+                    self.y -= dir_y * self.velocidad
+                    self.cuadrado.x = self.x
+                    self.cuadrado.y = self.y
+                else:
+                    # Se encontró una dirección válida, salir
+                    break
 
     def mover_hacia_objetivo(self, objetivo_x, objetivo_y, otros_robots):
         dx = objetivo_x - self.x
@@ -330,17 +395,14 @@ class Robot:
             self.tiempo_recarga = self.retraso_disparo
             
     def actualizar(self, jugador_x, jugador_y, otros_robots, forzar_patrulla=False, laberinto=None):
-        # Asegurarse de que los puntos de patrulla sean válidos al inicio
-        if not hasattr(self, 'patrulla_inicializada') or not self.patrulla_inicializada:
-            self.generar_puntos_patrulla_seguros(laberinto)
-            self.patrulla_inicializada = True
 
         # Gestión de tiempos
         # Reduce el tiempo de espera antes de que el robot pueda disparar
         if self.tiempo_antes_disparar > 0:
             self.tiempo_antes_disparar -= 1
-            if self.tiempo_antes_disparar <= 0:
-                self.puede_disparar = True
+        if self.tiempo_antes_disparar <= 0:
+            self.puede_disparar = True
+
         # Actualizar tiempo de recarga
         if self.tiempo_recarga > 0:
             self.tiempo_recarga -= 1
@@ -350,34 +412,24 @@ class Robot:
         dy = jugador_y - self.y
         distancia_jugador = math.sqrt(dx * dx + dy * dy)
 
-        # Posición anterior para detectar colisiones con paredes
-        x_anterior = self.x
-        y_anterior = self.y
-
-        # Si el jugador está en su zona de inicio, forzar patrulla
-        if forzar_patrulla:
-            self.estado_actual = "patrulla"
-            self.mover_en_patrulla(otros_robots, laberinto)
+        if self.estado_actual == "persecución" and not forzar_patrulla:
+            self.mover_hacia_jugador(jugador_x, jugador_y, otros_robots, laberinto)
+            # Si está suficientemente cerca, disparar
+            if distancia_jugador <= 200 and self.puede_disparar:
+                self.disparar_a_jugador(jugador_x, jugador_y)
         else:
-            # Si estamos en modo persecución y el jugador está cerca, disparamos
-            if distancia_jugador <= 250:
+            # Si está dentro del rango de detección y no estamos forzando patrulla, perseguir
+            if distancia_jugador <= 250 and not forzar_patrulla:
                 self.estado_actual = "persecución"
                 self.mover_hacia_jugador(jugador_x, jugador_y, otros_robots, laberinto)
+
                 # Si está suficientemente cerca, disparar
                 if distancia_jugador <= 200 and self.puede_disparar:
                     self.disparar_a_jugador(jugador_x, jugador_y)
             else:
-                # Si no está en rango, patrullar
+                # Si no está en rango o estamos forzando patrulla, patrullar
                 self.estado_actual = "patrulla"
                 self.mover_en_patrulla(otros_robots, laberinto)
-
-        # Verificar colisión con paredes después de mover
-        if laberinto and laberinto.verificar_colision(self.cuadrado):
-            # Si colisiona, volver a la posición anterior
-            self.x = x_anterior
-            self.y = y_anterior
-            self.cuadrado.x = self.x
-            self.cuadrado.y = self.y
 
         # Actualizar balas
         for bala in self.balas[:]:

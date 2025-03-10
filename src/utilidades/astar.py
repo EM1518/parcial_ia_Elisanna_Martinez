@@ -41,7 +41,7 @@ class ListaPrioridad:
         """Mueve un elemento hacia abajo en el montículo"""
         item = self.lista[pos]
         n = len(self.lista)
-        
+
         while True:
             hijo_izq = (pos << 1) + 1
             if hijo_izq >= n:
@@ -117,17 +117,22 @@ class AEstrella:
     def obtener_vecinos(self, nodo):
       # Obtiene los nodos vecinos válidos
         vecinos = []
-        # 4 direcciones principales: arriba, derecha, abajo, izquierda
-        direcciones = [(0, 1), (1, 0), (0, -1), (-1, 0)]
-
+        # direcciones y cardinales
+        direcciones = [
+            (0, 1), (1, 0), (0, -1), (-1, 0),  # Cardinales
+            (1, 1), (-1, 1), (-1, -1), (1, -1)  # Diagonales
+        ]
         for dx, dy in direcciones:
             nuevo_x = nodo.x + dx
             nuevo_y = nodo.y + dy
 
             if (0 <= nuevo_x < self.columnas and
-                0 <= nuevo_y < self.filas and
-                self.cuadricula[nuevo_y][nuevo_x] == 0):
-                vecinos.append(Nodo(nuevo_x, nuevo_y))
+                0 <= nuevo_y < self.filas):
+                    if dx != 0 and dy != 0:
+                        if self.cuadricula[nuevo_y][nodo.x] == 1 or self.cuadricula[nodo.y][nuevo_x] == 1:
+                            continue  # No permitir "cortar esquinas"
+                    if self.cuadricula[nuevo_y][nuevo_x] == 0:  # Solo si no hay obstáculo
+                        vecinos.append(Nodo(nuevo_x, nuevo_y))
         return vecinos
 
     def distancia_manhattan(self, nodo, objetivo):
