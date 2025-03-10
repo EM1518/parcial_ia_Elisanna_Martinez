@@ -437,11 +437,11 @@ class Juego:
             2: [
                 [600, 80, 700, 80, 650, 120],  # Robot 1: superior derecha
                 [600, 180, 650, 180, 700, 180],  # Robot 2: superior media derecha
-                [600, 280, 650, 280, 700, 280],  # Robot 3: medio derecha
+                [600, 250, 650, 250, 700, 100],  # Robot 3: medio derecha
                 [600, 380, 650, 380, 700, 380],  # Robot 4: medio inferior derecha
                 [600, 520, 650, 520, 700, 520],  # Robot 5: inferior derecha
                 [150, 80, 200, 80, 150, 120],  # Robot 6: superior izquierda
-                [150, 280, 200, 280, 150, 320],  # Robot 7: medio izquierda
+                [150, 380, 200, 280, 150, 320],  # Robot 7: medio izquierda
                 [350, 480, 400, 480, 350, 520]  # Robot 8: centro-inferior
             ],
             3: [

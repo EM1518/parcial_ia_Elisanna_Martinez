@@ -1,5 +1,6 @@
 import pygame
 import math
+import os
 import random
 from src.constantes import *
 from src.entidades.bala import Bala
@@ -41,6 +42,9 @@ class Robot:
 
         # Configuración del árbol de comportamiento
         self.configurar_arbol_comportamiento()
+
+        # Cargar sprites
+        self.cargar_sprites()
 
     def configurar_arbol_comportamiento(self):
         """
@@ -372,8 +376,11 @@ class Robot:
 
     def disparar_a_jugador(self, jugador_x, jugador_y):
         if not self.puede_disparar or self.tiempo_recarga > 0:
-            return        
-    
+            return
+
+        if self.usar_sprites:
+            self.sprite_actual = 'disparando'
+
         # Calcular la dirección hacia el jugador
         dx = jugador_x - self.x
         dy = jugador_y - self.y
@@ -439,8 +446,24 @@ class Robot:
             elif bala.esta_fuera_pantalla():
                 self.balas.remove(bala)
 
+        # Actualizar animación si hay sprites
+        if self.usar_sprites:
+            self.frame_contador += 1
+            if self.frame_contador < 20:
+                self.sprite_actual = 'movimiento1'
+            elif self.frame_contador < 40:
+                self.sprite_actual = 'movimiento2'
+            else:
+                self.frame_contador = 0
 
     def dibujar(self, surface):
+
+        """Dibuja el robot y sus balas"""
+        if self.usar_sprites:
+            surface.blit(self.sprites[self.sprite_actual], self.cuadrado)
+        else:
+            pygame.draw.rect(surface, self.color, self.cuadrado)
+
         # Dibujar puntos de patrulla y líneas de conexión si está patrullando
         if self.estado_actual == "patrulla":
             for i, punto in enumerate(self.puntos_patrulla):
@@ -458,7 +481,28 @@ class Robot:
                                self.ruta_actual[i], 
                                self.ruta_actual[i + 1], 1)
 
-        pygame.draw.rect(surface, self.color, self.cuadrado)
         # Dibujar balas
         for bala in self.balas:
             bala.dibujar(surface)
+
+    def cargar_sprites(self):
+        """Carga los sprites del robot"""
+        self.sprites = {}
+        try:
+            self.sprites['estatico'] = pygame.transform.scale(pygame.image.load(os.path.join('assets', 'imagenes', 'robots','robot_estatico.png')),
+                                                              (self.ancho, self.alto))
+            self.sprites['movimiento1'] = pygame.transform.scale(pygame.image.load(os.path.join('assets', 'imagenes', 'robots', 'robot_movimiento1.png')),
+                                                                 (self.ancho, self.alto))
+            self.sprites['movimiento2'] = pygame.transform.scale(pygame.image.load(os.path.join('assets', 'imagenes', 'robots', 'robot_movimiento2.png')),
+                                                                 (self.ancho, self.alto))
+            self.sprites['disparando'] = pygame.transform.scale(pygame.image.load(os.path.join('assets', 'imagenes', 'robots', 'robot_disparando.png')),
+                                                                (self.ancho, self.alto))
+            self.sprites['explotando'] = pygame.transform.scale(pygame.image.load(os.path.join('assets', 'imagenes', 'robots', 'robot_explotando.png')),
+                                                                (self.ancho, self.alto))
+            self.usar_sprites = True
+        except Exception as e:
+            print(f"Error al cargar sprites del robot: {e}")
+            self.usar_sprites = False
+
+        self.sprite_actual = 'estatico'
+        self.frame_contador = 0
