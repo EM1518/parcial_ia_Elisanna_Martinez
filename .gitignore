@@ -244,3 +244,4 @@ fabric.properties
 
 # PyPI configuration file
 .pypirc
+.idea/workspace.xml

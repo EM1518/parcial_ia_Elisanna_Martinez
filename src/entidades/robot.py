@@ -42,6 +42,7 @@ class Robot:
 
         # Configuración del árbol de comportamiento
         self.configurar_arbol_comportamiento()
+        self.obstaculos_actualizados = False
 
         # Cargar sprites
         self.cargar_sprites()
@@ -207,44 +208,16 @@ class Robot:
                     # Se encontró una dirección válida, salir
                     break
 
-    def mover_hacia_objetivo(self, objetivo_x, objetivo_y, otros_robots):
-        dx = objetivo_x - self.x
-        dy = objetivo_y - self.y
-        distancia = math.sqrt(dx * dx + dy * dy)
-        if distancia != 0:
-            # Normalizar el vector de dirección
-            dx = dx / distancia
-            dy = dy / distancia
-            
-            # Aplicar velocidad
-            nueva_x = self.x + dx * self.velocidad
-            nueva_y = self.y + dy * self.velocidad
-            
-            # Mantener dentro de los límites
-            nueva_x = max(0, min(nueva_x, ANCHO_PANTALLA - self.ancho))
-            nueva_y = max(0, min(nueva_y, ALTO_PANTALLA - self.alto))
-            
-            # Aplicar separación de otros robots
-            sep_x, sep_y = self.mantener_distancia_robots(otros_robots)
-            if sep_x != 0 or sep_y != 0:
-                nueva_x += sep_x * 0.5
-                nueva_y += sep_y * 0.5
-            
-            # Actualizar posición
-            self.x = nueva_x
-            self.y = nueva_y
-            self.cuadrado.x = self.x
-            self.cuadrado.y = self.y
-
     def mover_en_patrulla(self, otros_robots, laberinto=None):
         # Si no hay puntos de patrulla válidos, crear nuevos puntos seguros
         if not self.puntos_patrulla or len(self.puntos_patrulla) < 2:
             self.generar_puntos_patrulla_seguros(laberinto)
 
-        # Si aún no hay puntos de patrulla válidos después de intentar regenerarlos, simplemente girar en el lugar
-        if not self.puntos_patrulla or len(self.puntos_patrulla) < 2:
-            return
+        # Asegurarse de que tengamos al menos dos puntos
+        if len(self.puntos_patrulla) < 2:
+            return  # No moverse si no hay suficientes puntos
 
+        # Determinar el punto objetivo actual
         punto_actual = self.puntos_patrulla[self.punto_patrulla_actual]
         
         # Calcular dirección al punto actual
@@ -262,23 +235,23 @@ class Robot:
             dx = dx / distancia
             dy = dy / distancia
 
-            # Aplicar movimiento continuo
-            nueva_x = self.x + dx * self.velocidad
-            nueva_y = self.y + dy * self.velocidad
+        # Aplicar movimiento continuo
+        nueva_x = self.x + dx * self.velocidad
+        nueva_y = self.y + dy * self.velocidad
 
-            # Mantener dentro de los límites
-            nueva_x = max(0, min(nueva_x, ANCHO_PANTALLA - self.ancho))
-            nueva_y = max(0, min(nueva_y, ALTO_PANTALLA - self.alto))
+        # Mantener dentro de los límites
+        nueva_x = max(0, min(nueva_x, ANCHO_PANTALLA - self.ancho))
+        nueva_y = max(0, min(nueva_y, ALTO_PANTALLA - self.alto))
 
-            # Guardar posición anterior
-            x_anterior = self.x
-            y_anterior = self.y
+        # Guardar posición anterior
+        x_anterior = self.x
+        y_anterior = self.y
 
-            # Actualizar posición
-            self.x = nueva_x
-            self.y = nueva_y
-            self.cuadrado.x = self.x
-            self.cuadrado.y = self.y
+        # Actualizar posición
+        self.x = nueva_x
+        self.y = nueva_y
+        self.cuadrado.x = self.x
+        self.cuadrado.y = self.y
 
         # Verificar colisión con paredes
         if laberinto and laberinto.verificar_colision(self.cuadrado):
@@ -326,9 +299,9 @@ class Robot:
             temp_rect = pygame.Rect(x - self.ancho / 2, y - self.alto / 2, self.ancho, self.alto)
             if not laberinto.verificar_colision(temp_rect):
                 self.puntos_patrulla.append((x, y))
-                # Limitar a solo 2 puntos adicionales
-                if len(self.puntos_patrulla) >= 3:
-                    break
+            # Limitar a solo 2 puntos adicionales
+            if len(self.puntos_patrulla) >= 3:
+                break
 
         # Si no se encontró ningún punto adicional, añadir uno muy cercano
         if len(self.puntos_patrulla) < 2:
@@ -391,15 +364,15 @@ class Robot:
             dx /= distancia
             dy /= distancia
 
-            # crear la bala desde el centro del robot
-            bala_x = self.x + self.ancho // 2 - ANCHO_BALA // 2
-            bala_y = self.y + self.alto // 2 - ALTO_BALA // 2
+        # crear la bala desde el centro del robot
+        bala_x = self.x + self.ancho // 2 - ANCHO_BALA // 2
+        bala_y = self.y + self.alto // 2 - ALTO_BALA // 2
 
-            # Crear bala con velocidad personalizada
-            bala = Bala(bala_x, bala_y, dx, dy)
-            bala.velocidad = VELOCIDAD_BALA  # Usar la constante para la velocidad de la bala
-            self.balas.append(bala)
-            self.tiempo_recarga = self.retraso_disparo
+        # Crear bala con velocidad personalizada
+        bala = Bala(bala_x, bala_y, dx, dy)
+        bala.velocidad = VELOCIDAD_BALA  # Usar la constante para la velocidad de la bala
+        self.balas.append(bala)
+        self.tiempo_recarga = self.retraso_disparo
             
     def actualizar(self, jugador_x, jugador_y, otros_robots, forzar_patrulla=False, laberinto=None):
 
@@ -413,30 +386,16 @@ class Robot:
         # Actualizar tiempo de recarga
         if self.tiempo_recarga > 0:
             self.tiempo_recarga -= 1
-        
-        # Calcular distancia al jugador para determinar comportamiento
-        dx = jugador_x - self.x
-        dy = jugador_y - self.y
-        distancia_jugador = math.sqrt(dx * dx + dy * dy)
 
-        if self.estado_actual == "persecución" and not forzar_patrulla:
-            self.mover_hacia_jugador(jugador_x, jugador_y, otros_robots, laberinto)
-            # Si está suficientemente cerca, disparar
-            if distancia_jugador <= 200 and self.puede_disparar:
+        # Ejecutar el árbol de comportamiento para determinar acciones
+        resultado = self.arbol_comportamiento.ejecutar(self, jugador_x, jugador_y, otros_robots, laberinto,
+                                                       forzar_patrulla)
+
+        # Hacer que los robots disparen cuando están persiguiendo
+        if self.estado_actual == "persecución" and self.puede_disparar and self.tiempo_recarga <= 0:
+        # Aumentamos la probabilidad para que disparen más
+            if random.random() < 0.05:  # 5% de probabilidad, mayor que antes
                 self.disparar_a_jugador(jugador_x, jugador_y)
-        else:
-            # Si está dentro del rango de detección y no estamos forzando patrulla, perseguir
-            if distancia_jugador <= 250 and not forzar_patrulla:
-                self.estado_actual = "persecución"
-                self.mover_hacia_jugador(jugador_x, jugador_y, otros_robots, laberinto)
-
-                # Si está suficientemente cerca, disparar
-                if distancia_jugador <= 200 and self.puede_disparar:
-                    self.disparar_a_jugador(jugador_x, jugador_y)
-            else:
-                # Si no está en rango o estamos forzando patrulla, patrullar
-                self.estado_actual = "patrulla"
-                self.mover_en_patrulla(otros_robots, laberinto)
 
         # Actualizar balas
         for bala in self.balas[:]:
@@ -463,6 +422,8 @@ class Robot:
             surface.blit(self.sprites[self.sprite_actual], self.cuadrado)
         else:
             pygame.draw.rect(surface, self.color, self.cuadrado)
+        for bala in self.balas:
+            bala.dibujar(surface)
 
         # Dibujar puntos de patrulla y líneas de conexión si está patrullando
         if self.estado_actual == "patrulla":
@@ -481,9 +442,6 @@ class Robot:
                                self.ruta_actual[i], 
                                self.ruta_actual[i + 1], 1)
 
-        # Dibujar balas
-        for bala in self.balas:
-            bala.dibujar(surface)
 
     def cargar_sprites(self):
         """Carga los sprites del robot"""

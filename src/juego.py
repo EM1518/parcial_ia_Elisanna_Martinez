@@ -695,17 +695,17 @@ class Juego:
                         otro_robot.x -= dx * distancia_separacion / 2
                         otro_robot.y -= dy * distancia_separacion / 2
                         
-                        # Mantener dentro de los límites de la pantalla
-                        robot.x = max(0, min(robot.x, ANCHO_PANTALLA - robot.ancho))
-                        robot.y = max(0, min(robot.y, ALTO_PANTALLA - robot.alto))
-                        otro_robot.x = max(0, min(otro_robot.x, ANCHO_PANTALLA - otro_robot.ancho))
-                        otro_robot.y = max(0, min(otro_robot.y, ALTO_PANTALLA - otro_robot.alto))
-                        
-                        # Actualizar cuadrados
-                        robot.cuadrado.x = robot.x
-                        robot.cuadrado.y = robot.y
-                        otro_robot.cuadrado.x = otro_robot.x
-                        otro_robot.cuadrado.y = otro_robot.y
+                    # Mantener dentro de los límites de la pantalla
+                    robot.x = max(0, min(robot.x, ANCHO_PANTALLA - robot.ancho))
+                    robot.y = max(0, min(robot.y, ALTO_PANTALLA - robot.alto))
+                    otro_robot.x = max(0, min(otro_robot.x, ANCHO_PANTALLA - otro_robot.ancho))
+                    otro_robot.y = max(0, min(otro_robot.y, ALTO_PANTALLA - otro_robot.alto))
+
+                    # Actualizar cuadrados
+                    robot.cuadrado.x = robot.x
+                    robot.cuadrado.y = robot.y
+                    otro_robot.cuadrado.x = otro_robot.x
+                    otro_robot.cuadrado.y = otro_robot.y
 
     def verificar_colisiones(self):
         # Verificar colisiones entre balas del jugador y robots

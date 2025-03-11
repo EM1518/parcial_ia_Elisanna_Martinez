@@ -1,22 +1,12 @@
 
 def calcular_distancia(x1, y1, x2, y2):
-    """Calcula la distancia euclidiana entre dos puntos sin usar math.sqrt"""
+    """Calcula la distancia euclidiana entre dos puntos"""
     dx = x2 - x1
     dy = y2 - y1
 
-    # Aproximación rápida de raíz cuadrada usando iteraciones
-    distancia_cuadrada = dx * dx + dy * dy
-
-    # Método de aproximación de Newton-Raphson
-    x = distancia_cuadrada  # Valor inicial
-    for _ in range(5):  # 5 iteraciones es suficiente para buena precisión
-        x = 0.5 * (x + distancia_cuadrada / x)
-
-    return x
-
+    return (dx * dx + dy * dy) ** 0.5
 
 def normalizar_vector(dx, dy):
-    """Normaliza un vector 2D sin usar math.sqrt"""
     magnitud = calcular_distancia(0, 0, dx, dy)
 
     if magnitud != 0:
@@ -34,7 +24,7 @@ class NodoBase:
     def __init__(self):
         self.estado = Estado.EJECUTANDO
 
-    def ejecutar(self, robot, jugador_x, jugador_y, otros_robots):
+    def ejecutar(self, robot, jugador_x, jugador_y, otros_robots, laberinto=None, forzar_patrulla=False):
         pass
 
 class Secuencia(NodoBase):
@@ -44,9 +34,9 @@ class Secuencia(NodoBase):
         self.nodos = nodos
         self.nodo_actual = 0
 
-    def ejecutar(self, robot, jugador_x, jugador_y, otros_robots):
+    def ejecutar(self, robot, jugador_x, jugador_y, otros_robots, laberinto=None, forzar_patrulla=False):
         while self.nodo_actual < len(self.nodos):
-            estado = self.nodos[self.nodo_actual].ejecutar(robot, jugador_x, jugador_y, otros_robots)
+            estado = self.nodos[self.nodo_actual].ejecutar(robot, jugador_x, jugador_y, otros_robots, laberinto, forzar_patrulla)
             
             if estado == Estado.FALLO:
                 self.nodo_actual = 0
@@ -67,34 +57,52 @@ class Selector(NodoBase):
         self.nodos = nodos
         self.nodo_actual = 0
 
-    def ejecutar(self, robot, jugador_x, jugador_y, otros_robots):
+    def ejecutar(self, robot, jugador_x, jugador_y, otros_robots, laberinto=None, forzar_patrulla=False):
+        # Resetea el índice al inicio para evaluar todos los nodos cada vez
+        self.nodo_actual = 0
+
         while self.nodo_actual < len(self.nodos):
-            estado = self.nodos[self.nodo_actual].ejecutar(robot, jugador_x, jugador_y, otros_robots)
+            estado = self.nodos[self.nodo_actual].ejecutar(robot, jugador_x, jugador_y, otros_robots, laberinto, forzar_patrulla)
             
             if estado == Estado.EXITO:
-                self.nodo_actual = 0
                 return Estado.EXITO
-            
+
+            # Si el nodo está en ejecución, mantenemos ese nodo activo
             if estado == Estado.EJECUTANDO:
                 return Estado.EJECUTANDO
-            
+
+            # Si falló, pasamos al siguiente nodo
             self.nodo_actual += 1
 
-        self.nodo_actual = 0
+        # Si todos los nodos fallaron, el selector falla
         return Estado.FALLO
 
 class JugadorEnRango(NodoBase):
-    """Condición que verifica si el jugador está en rango de detección"""
-    def __init__(self, rango_deteccion=150):
+    """Verifica si el jugador está en rango de detección"""
+    def __init__(self, rango_deteccion=500):
         super().__init__()
         self.rango_deteccion = rango_deteccion
 
-    def ejecutar(self, robot, jugador_x, jugador_y, otros_robots):
-        dx = jugador_x - robot.x
-        dy = jugador_y - robot.y
-        distancia = calcular_distancia(0, 0, dx, dy)
+    def ejecutar(self, robot, jugador_x, jugador_y, otros_robots, laberinto=None, forzar_patrulla=False):
+        # Si se fuerza patrulla, siempre falla
+        if forzar_patrulla:
+            return Estado.FALLO
+
+        # Calculamos posiciones centrales
+        robot_centro_x = robot.x + robot.ancho / 2
+        robot_centro_y = robot.y + robot.alto / 2
+        jugador_centro_x = jugador_x + robot.ancho / 2
+        jugador_centro_y = jugador_y + robot.alto / 2
+
+        # Calculamos la distancia entre centros
+        dx = jugador_centro_x - robot_centro_x
+        dy = jugador_centro_y - robot_centro_y
+        distancia =  (dx * dx + dy * dy) ** 0.5
+
+        # Usando un valor absoluto para rango
+        rango_real = self.rango_deteccion
         
-        if distancia <= self.rango_deteccion:
+        if distancia <= rango_real:
             return Estado.EXITO
         else:
             return Estado.FALLO
@@ -104,42 +112,30 @@ class Perseguir(NodoBase):
     def __init__(self):
         super().__init__()
 
-    def ejecutar(self, robot, jugador_x, jugador_y, otros_robots):
+    def ejecutar(self, robot, jugador_x, jugador_y, otros_robots, laberinto=None, forzar_patrulla=False):
         # Marca el estado actual del robot
         robot.estado_actual = "persecución"
 
         # Utiliza A* para perseguir al jugador
-        robot.mover_hacia_jugador(jugador_x, jugador_y, otros_robots)
-        return Estado.EJECUTANDO
+        robot.mover_hacia_jugador(jugador_x, jugador_y, otros_robots, laberinto)
 
+        # Siempre devuelve EJECUTANDO para que siga persiguiendo
+        return Estado.EJECUTANDO
 
 class Patrullar(NodoBase):
     """Comportamiento de patrulla"""
     def __init__(self):
         super().__init__()
-        self.puntos_patrulla =  []
+        self.puntos_patrulla = None
         self.punto_actual = 0
         self.margen_llegada = 5
 
-    def inicializar_puntos(self, robot):
-        """Inicializa los puntos de patrulla si no existen"""
-        if not self.puntos_patrulla:
-            # Crear un patrón rectangular alrededor del punto inicial
-            x_base = robot.x
-            y_base = robot.y
-            offset = 75  # Distancia del patrón de patrulla
-
-            self.puntos_patrulla = [
-                (x_base, y_base),
-                (x_base + offset, y_base),
-                (x_base + offset, y_base + offset),
-                (x_base, y_base + offset),
-            ]
-
-    def ejecutar(self, robot, jugador_x, jugador_y, otros_robots):
+    def ejecutar(self, robot, jugador_x, jugador_y, otros_robots, laberinto=None, forzar_patrulla=False):
         # Marca el estado actual del robot
         robot.estado_actual = "patrulla"
 
-        # En este caso usamos los puntos de patrulla ya definidos en el robot
+        # En este caso usa los puntos de patrulla ya definidos en el robot
         robot.mover_en_patrulla(otros_robots)
+
+        # Siempre devuelve EJECUTANDO para que siga patrullando
         return Estado.EJECUTANDO

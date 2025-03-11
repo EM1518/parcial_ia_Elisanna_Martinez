@@ -14,6 +14,10 @@ class Bala:
         self.cuadrado = pygame.Rect(x, y, self.ancho, self.alto)
 
     def actualizar(self, laberinto=None):
+        """
+        Actualiza la posición de la bala y verifica colisiones con paredes
+        """
+        # Mover la bala
         self.x +=  self.direccion_x * self.velocidad
         self.y +=  self.direccion_y * self.velocidad   
         self.cuadrado.x = self.x
