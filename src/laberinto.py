@@ -54,7 +54,7 @@ class Laberinto:
 
         # Paredes interiores
         # Pared vertical central
-        self.paredes.append(Pared(400, 0, grosor, 300))
+        self.paredes.append(Pared(400, 0, grosor, 225))
 
         # Pared horizontal superior izquierda
         self.paredes.append(Pared(0, 200, 200, grosor))
@@ -63,7 +63,7 @@ class Laberinto:
         self.paredes.append(Pared(215, 480, 370, grosor))
 
         # Pared vertical derecha
-        self.paredes.append(Pared(600, 300, grosor, 300))
+        self.paredes.append(Pared(600, 300, grosor, 275))
 
         # Pared vertical pequeña inferior
         self.paredes.append(Pared(215, 350, grosor, 130))
@@ -82,8 +82,7 @@ class Laberinto:
         self.paredes.append(Pared(ANCHO_PANTALLA - grosor, 0, grosor, ALTO_PANTALLA))
 
         # Pared horizontal central con amplia apertura
-        self.paredes.append(Pared(0, 300, 300, grosor))  # Sección izquierda
-        self.paredes.append(Pared(500, 300, 300, grosor))  # Sección derecha
+        self.paredes.append(Pared(0, 300, 150, grosor))  # Sección izquierda
 
         # Pared vertical central con amplia apertura
         self.paredes.append(Pared(400, 0, grosor, 200))  # Sección superior
@@ -150,11 +149,8 @@ class Laberinto:
         self.paredes.append(Pared(600, 200, grosor, 100))
         self.paredes.append(Pared(600, 400, grosor, 100))
 
-        # Obstáculos adicionales
-       # self.paredes.append(Pared(300, 150, grosor, 50))
-       # self.paredes.append(Pared(500, 350, grosor, 50))
+        # Obstáculo adicional
         self.paredes.append(Pared(300, 450, 50, grosor))
-       # self.paredes.append(Pared(450, 250, 50, grosor))
 
     def cambiar_nivel(self, nivel):
         """
