@@ -323,8 +323,8 @@ class Juego:
 
             # Intentar cargar sonidos si existen
             archivos_sonido = {
-                'disparo_jugador': 'assets/sonidos/disparo_jugador.wav',
-                'disparo_robot': 'assets/sonidos/disparo_robot.wav',
+                'disparo_jugador': 'assets/sonidos/disparo_jugador.ogg',
+                'disparo_robot': 'assets/sonidos/disparo_robot.ogg',
                 'explosion': 'assets/sonidos/explosion.wav',
                 'nivel_completado': 'assets/sonidos/nivel_completado.wav',
                 'game_over': 'assets/sonidos/game_over.wav',
@@ -332,18 +332,18 @@ class Juego:
             }
 
             # Música de fondo
-            archivo_musica = 'assets/sonidos/musica_fondo.mp3'
+            archivo_musica = 'assets/sonidos/BMUSIC.ogg'
 
             # Cargar sonidos disponibles
             for nombre, ruta in archivos_sonido.items():
                 if os.path.exists(ruta):
                     self.sonidos[nombre] = pygame.mixer.Sound(ruta)
-                    self.sonidos[nombre].set_volume(0.3)
+                    self.sonidos[nombre].set_volume(0.1)
 
             # Cargar música si existe
             if os.path.exists(archivo_musica):
                 pygame.mixer.music.load(archivo_musica)
-                pygame.mixer.music.set_volume(0.2)
+                pygame.mixer.music.set_volume(0.04)
                 pygame.mixer.music.play(-1)  # -1 para repetir infinitamente
 
         except Exception as e:

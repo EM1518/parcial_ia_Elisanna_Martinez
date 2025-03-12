@@ -6,11 +6,17 @@
   <component name="ChangeListManager">
     <list default="true" id="25efbc73-c38a-4b70-864f-5bef63894b06" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/constantes.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/constantes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/entidades/robot.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/entidades/robot.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/laberinto.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/laberinto.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utilidades/arbol_comportamiento.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utilidades/arbol_comportamiento.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utilidades/astar.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utilidades/astar.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_disparando.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_estatico.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_estatico.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_golpeado.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_movimiento1.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_movimiento1.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_movimiento2.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_movimiento2.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_muriendo.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_muriendo1.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_muriendo2.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_muriendo3.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/entidades/jugador.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/entidades/jugador.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/juego.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/juego.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -44,7 +50,7 @@
   "keyToString": {
     "Python.bala.executor": "Debug",
     "Python.juego.executor": "Run",
-    "Python.jugador.executor": "Debug",
+    "Python.jugador.executor": "Run",
     "Python.laberinto.executor": "Run",
     "Python.main.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",

@@ -51,7 +51,6 @@ class Jugador:
 
             self.balas.append(nueva_bala)
             self.tiempo_recarga = self.retraso_disparo
-            self.sprite_actual = 'disparando'
 
     def actualizar(self, laberinto=None):
         """
@@ -75,10 +74,12 @@ class Jugador:
             # Actualizar animación si hay sprites
             if self.usar_sprites:
                 self.frame_contador += 1
-                if self.frame_contador < 10:
+                if self.frame_contador < 7:
                     self.sprite_actual = 'movimiento1'
-                elif self.frame_contador < 20:
+                elif self.frame_contador < 14:
                     self.sprite_actual = 'movimiento2'
+                elif self.frame_contador < 21:
+                    self.sprite_actual = 'movimiento3'
                 else:
                     self.frame_contador = 0
         else:
@@ -128,11 +129,8 @@ class Jugador:
             self.sprites['movimiento2'] = pygame.transform.scale(
                 pygame.image.load(os.path.join('assets', 'imagenes', 'jugador', 'jugador_movimiento2.png')),
                 (self.ancho, self.alto))
-            self.sprites['disparando'] = pygame.transform.scale(
-                pygame.image.load(os.path.join('assets', 'imagenes', 'jugador', 'jugador_disparando.png')),
-                (self.ancho, self.alto))
-            self.sprites['muriendo'] = pygame.transform.scale(
-                pygame.image.load(os.path.join('assets', 'imagenes', 'jugador', 'jugador_muriendo.png')),
+            self.sprites['movimiento3'] = pygame.transform.scale(
+                pygame.image.load(os.path.join('assets', 'imagenes', 'jugador', 'jugador_movimiento3.png')),
                 (self.ancho, self.alto))
             self.usar_sprites = True
         except Exception as e:
