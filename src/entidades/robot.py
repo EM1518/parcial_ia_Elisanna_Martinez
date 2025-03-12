@@ -227,7 +227,7 @@ class Robot:
 
         # Crear bala con velocidad personalizada
         bala = Bala(bala_x, bala_y, dx, dy)
-        bala.velocidad = VELOCIDAD_BALA
+        bala.velocidad = self.velocidad_bala
         self.balas.append(bala)
         self.tiempo_recarga = self.retraso_disparo
         return True

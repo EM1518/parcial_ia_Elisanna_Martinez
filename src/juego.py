@@ -53,7 +53,9 @@ class Menu:
             return self.opciones_pausa
         elif self.estado_menu == "game_over" or self.estado_menu == "victoria":
             return self.opciones_game_over
-        return []
+        elif self.estado_menu == "instrucciones":
+            return ["Volver"]
+        return ["Volver"]
 
     def seleccionar_opcion(self):
         if self.estado_menu == "principal":
@@ -217,6 +219,18 @@ class Menu:
             rect_texto = texto.get_rect(center=(ANCHO_PANTALLA // 2, y_pos))
             self.pantalla.blit(texto, rect_texto)
 
+    def manejar_joystick(self, eje_y, tiempo_actual, ultimo_tiempo):
+        """Maneja la navegación del menú con joystick"""
+        if tiempo_actual - ultimo_tiempo > 200:  # 200ms para evitar navegación demasiado rápida
+            if eje_y > 0.5:  # Hacia abajo
+                self.opcion_seleccionada = (self.opcion_seleccionada + 1) % len(self.obtener_opciones_actuales())
+                return tiempo_actual
+            elif eje_y < -0.5:  # Hacia arriba
+                self.opcion_seleccionada = (self.opcion_seleccionada - 1) % len(self.obtener_opciones_actuales())
+                return tiempo_actual
+        return ultimo_tiempo
+
+
 class Juego:
     def __init__(self):
         pygame.init()
@@ -226,12 +240,26 @@ class Juego:
         self.reloj = pygame.time.Clock()
         self.ejecutando = True
 
+        # Inicialización de joysticks
+        pygame.joystick.init()
+        self.joysticks = []
+        for i in range(pygame.joystick.get_count()):
+            joystick = pygame.joystick.Joystick(i)
+            joystick.init()
+            self.joysticks.append(joystick)
+            print(f"Joystick {i} conectado: {joystick.get_name()}")
+
+        # Variables para el control del joystick
+        self.joystick_x = 0
+        self.joystick_y = 0
+        self.ultimo_tiempo_joystick = 0  # Para controlar la sensibilidad en menús
+
         # Nivel actual
         self.nivel_actual = 1
 
         # Definir zona de inicio
         margen = 50
-        tamano_zona = 150
+        tamano_zona = 80
         self.zona_inicio = pygame.Rect(
             margen, 
             ALTO_PANTALLA - margen - tamano_zona,
@@ -272,7 +300,7 @@ class Juego:
         self.imagenes = {}
         try:
             # Crear directorio de imágenes si no existe
-            os.makedirs('src/assets/imagenes', exist_ok=True)
+            os.makedirs('assets/imagenes', exist_ok=True)
 
             # Crear imagen para la vida (corazón simple)
             tamano_vida = 25
@@ -291,20 +319,20 @@ class Juego:
         self.sonidos = {}
         try:
             # Asegurarse de que existe el directorio
-            os.makedirs('src/assets/sonidos', exist_ok=True)
+            os.makedirs('assets/sonidos', exist_ok=True)
 
             # Intentar cargar sonidos si existen
             archivos_sonido = {
-                'disparo_jugador': 'src/assets/sonidos/disparo_jugador.wav',
-                'disparo_robot': 'src/assets/sonidos/disparo_robot.wav',
-                'explosion': 'src/assets/sonidos/explosion.wav',
-                'nivel_completado': 'src/assets/sonidos/nivel_completado.wav',
-                'game_over': 'src/assets/sonidos/game_over.wav',
-                'daño': 'src/assets/sonidos/dano.wav'
+                'disparo_jugador': 'assets/sonidos/disparo_jugador.wav',
+                'disparo_robot': 'assets/sonidos/disparo_robot.wav',
+                'explosion': 'assets/sonidos/explosion.wav',
+                'nivel_completado': 'assets/sonidos/nivel_completado.wav',
+                'game_over': 'assets/sonidos/game_over.wav',
+                'daño': 'assets/sonidos/dano.wav'
             }
 
             # Música de fondo
-            archivo_musica = 'src/assets/sonidos/musica_fondo.mp3'
+            archivo_musica = 'assets/sonidos/musica_fondo.mp3'
 
             # Cargar sonidos disponibles
             for nombre, ruta in archivos_sonido.items():
@@ -332,6 +360,13 @@ class Juego:
         jugador_x, jugador_y = self.calcular_posicion_segura_jugador()
         # Crear jugador en el centro de la zona de inicio
         self.jugador = Jugador(jugador_x, jugador_y)
+
+        # Reiniciar los valores del joystick
+        self.joystick_x = 0
+        self.joystick_y = 0
+
+        # Ajustar velocidad del jugador
+        self.jugador.velocidad = VELOCIDAD_JUGADOR
 
         #crear robots
         self.robots = []
@@ -767,7 +802,7 @@ class Juego:
         """Gestiona la pérdida de una vida del jugador"""
         if not self.invulnerable:
             self.reproducir_sonido('daño')
-          #  self.vidas -= 1
+            self.vidas -= 1
 
             if self.vidas <= 0:
                 # Game over
@@ -789,11 +824,95 @@ class Juego:
                 self.jugador.cuadrado.y = y
 
     def manejar_eventos(self):
+
+        tiempo_actual = pygame.time.get_ticks()
+
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 self.ejecutando = False
 
-            # Manejar eventos según el estado del juego
+            # Eventos de joystick
+            elif evento.type == pygame.JOYAXISMOTION:
+                # Movimiento en los menús con el joystick izquierdo
+                if self.estado_juego == "menu" or self.estado_juego == "pausa":
+                    if evento.axis == 1:  # Eje Y del joystick izquierdo
+                        # Control de velocidad para el menú
+                        if tiempo_actual - self.ultimo_tiempo_joystick > 200:  # 200ms entre movimientos
+                            # Verificar que hay opciones para evitar división por cero
+                            opciones = self.menu.obtener_opciones_actuales()
+                            if opciones and len(opciones) > 0:
+                                if evento.value > 0.5:  # Hacia abajo
+                                    self.menu.opcion_seleccionada = (self.menu.opcion_seleccionada + 1) % len(opciones)
+                                    self.ultimo_tiempo_joystick = tiempo_actual
+                                elif evento.value < -0.5:  # Hacia arriba
+                                    self.menu.opcion_seleccionada = (self.menu.opcion_seleccionada - 1) % len(opciones)
+                                    self.ultimo_tiempo_joystick = tiempo_actual
+
+                # Movimiento del jugador con joystick izquierdo en modo juego
+                elif self.estado_juego == "jugando":
+                    if evento.axis < 2:  # Los primeros dos ejes (X, Y) del joystick izquierdo
+                        if evento.axis == 0:
+                            self.joystick_x = evento.value
+                        elif evento.axis == 1:
+                            self.joystick_y = evento.value
+
+            elif evento.type == pygame.JOYBUTTONDOWN:
+                # Botones de dirección para disparar
+                # Mapeo de botones según su posición
+                if self.estado_juego == "jugando":
+                    if evento.button == 0:  # Botón 1 - dispara hacia arriba
+                        self.jugador.disparar(0, -1)
+                        self.reproducir_sonido('disparo_jugador')
+                    elif evento.button == 1:  # Botón 2 - dispara hacia la derecha
+                        self.jugador.disparar(1, 0)
+                        self.reproducir_sonido('disparo_jugador')
+                    elif evento.button == 2:  # Botón 3 - dispara hacia abajo
+                        self.jugador.disparar(0, 1)
+                        self.reproducir_sonido('disparo_jugador')
+                    elif evento.button == 3:  # Botón 4 - dispara hacia la izquierda
+                        self.jugador.disparar(-1, 0)
+                        self.reproducir_sonido('disparo_jugador')
+                    elif evento.button == 7 or evento.button == 9:  # Botón Start - pausa el juego
+                        self.estado_juego = "pausa"
+                        self.menu.estado_menu = "pausa"
+                        self.menu.opcion_seleccionada = 0
+
+                # Navegación en menús
+                if self.estado_juego == "menu" or self.estado_juego == "pausa":
+                    if evento.button == 0:  # Botón 1 - Seleccionar opción
+                        opciones = self.menu.obtener_opciones_actuales()
+                        if opciones and len(opciones) > 0:
+                            accion = self.menu.seleccionar_opcion()
+                            if accion == "jugar":
+                                self.estado_juego = "jugando"
+                                self.nivel_actual = 1
+                                self.vidas = 3
+                                self.laberinto.cambiar_nivel(self.nivel_actual)
+                                self.reiniciar_juego()
+                            elif accion == "salir":
+                                self.ejecutando = False
+                            elif accion == "reiniciar":
+                                self.estado_juego = "jugando"
+                                self.nivel_actual = 1
+                                self.vidas = 3
+                                self.laberinto.cambiar_nivel(self.nivel_actual)
+                                self.reiniciar_juego()
+                            elif accion == "continuar":
+                                self.estado_juego = "jugando"
+                            elif accion == "menu":
+                                self.menu.estado_menu = "principal"
+                                self.menu.opcion_seleccionada = 0
+                                self.estado_juego = "menu"
+
+                    # Botón para volver
+                    elif evento.button == 1 or evento.button == 6:  # Botón 2 o Select para volver
+                        if self.estado_juego == "pausa":
+                            self.estado_juego = "jugando"
+                        elif self.menu.estado_menu == "instrucciones":
+                            self.menu.estado_menu = "principal"
+                            self.menu.opcion_seleccionada = 0
+
+            # Eventos con el teclado
             if self.estado_juego == "menu":
                 accion = self.menu.manejar_eventos(evento)
                 if accion == "jugar":
@@ -839,6 +958,17 @@ class Juego:
             teclas = pygame.key.get_pressed()
             dx = teclas[pygame.K_RIGHT] - teclas[pygame.K_LEFT]
             dy = teclas[pygame.K_DOWN] - teclas[pygame.K_UP]
+
+            # Combinar con movimiento del joystick si existe
+            if hasattr(self, 'joystick_x') and hasattr(self, 'joystick_y'):
+                umbral = 0.2
+                joystick_dx = self.joystick_x if abs(self.joystick_x) > umbral else 0
+                joystick_dy = self.joystick_y if abs(self.joystick_y) > umbral else 0
+
+                # Si hay input del joystick, usarlo en lugar del teclado
+                if joystick_dx != 0 or joystick_dy != 0:
+                    dx = joystick_dx
+                    dy = joystick_dy
 
             self.jugador.mover(dx, dy)
 
