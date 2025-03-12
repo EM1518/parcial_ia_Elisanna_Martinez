@@ -1,3 +1,5 @@
+# Elisanna María Martínez Sánchez 23-EISN-2-074
+
 # Configuración de la pantalla
 ALTO_PANTALLA = 600
 ANCHO_PANTALLA = 800

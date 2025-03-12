@@ -1,3 +1,4 @@
+# Elisanna María Martínez Sánchez 23-EISN-2-074
 
 class Estado:
     EXITO = "EXITO"

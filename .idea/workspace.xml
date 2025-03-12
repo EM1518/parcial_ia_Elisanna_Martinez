@@ -6,17 +6,11 @@
   <component name="ChangeListManager">
     <list default="true" id="25efbc73-c38a-4b70-864f-5bef63894b06" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_disparando.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_estatico.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_estatico.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_golpeado.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_movimiento1.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_movimiento1.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_movimiento2.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_movimiento2.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_muriendo.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_muriendo1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_muriendo2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/imagenes/jugador/jugador_muriendo3.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/entidades/bala.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/entidades/bala.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/entidades/jugador.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/entidades/jugador.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/juego.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/juego.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/entidades/robot.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/entidades/robot.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utilidades/arbol_comportamiento.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utilidades/arbol_comportamiento.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -46,19 +40,19 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.bala.executor": "Debug",
-    "Python.juego.executor": "Run",
-    "Python.jugador.executor": "Run",
-    "Python.laberinto.executor": "Run",
-    "Python.main.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "C:/Users/user/Desktop/parcial_ia_Elisanna_Martinez"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.bala.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.juego.executor&quot;: &quot;Run&quot;,
+    &quot;Python.jugador.executor&quot;: &quot;Run&quot;,
+    &quot;Python.laberinto.executor&quot;: &quot;Run&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/user/Desktop/parcial_ia_Elisanna_Martinez&quot;
   }
-}]]></component>
+}</component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
